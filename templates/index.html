@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kayak Journey Planner</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛶 Kayak Journey Planner</h1>
+            <p>Plan your kayak trips with real-time tide information</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Journey Planning Panel -->
+            <div class="sidebar">
+                <div class="panel">
+                    <h2>Journey Details</h2>
+                    
+                    <div class="form-group">
+                        <label for="start-location">Start Location</label>
+                        <input type="text" id="start-location" placeholder="Click map or enter coordinates">
+                        <button id="use-my-location" class="btn-secondary">📍 Use My Location</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="end-location">End Location</label>
+                        <input type="text" id="end-location" placeholder="Click map to set destination">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="start-time">Departure Time</label>
+                        <input type="datetime-local" id="start-time">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="duration">Journey Duration (hours)</label>
+                        <input type="number" id="duration" value="3" min="0.5" max="12" step="0.5">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="spring-percentage">Spring Percentage (optional)</label>
+                        <input type="number" id="spring-percentage" placeholder="Auto-calculate" min="0" max="100" step="1">
+                        <small style="color: #666; font-size: 0.85rem;">Leave blank to auto-calculate, or enter value from tide tables (e.g., 60)</small>
+                    </div>
+
+                    <button id="plan-journey" class="btn-primary">Calculate Journey</button>
+                    <button id="clear-journey" class="btn-secondary">Clear</button>
+                </div>
+
+                <!-- Journey Results -->
+                <div class="panel" id="results-panel" style="display: none;">
+                    <h2>Journey Plan</h2>
+                    <div id="journey-results"></div>
+                </div>
+
+                <!-- Tide Information -->
+                <div class="panel">
+                    <h2>Tide Information</h2>
+                    <div id="tide-info">
+                        <p class="info-text">Select a journey to see tide information</p>
+                    </div>
+                </div>
+
+                <!-- Launch Spots Legend -->
+                <div class="panel">
+                    <h2>Launch Spots</h2>
+                    <div id="launch-spots-list"></div>
+                </div>
+            </div>
+
+            <!-- Map -->
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Chart.js for tide graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
