@@ -119,6 +119,30 @@ def calculate_spring_neap_percentage(date):
     return round(max(0, min(100, percentage)), 1)
 
 
+def fetch_royal_navy_spring_percentage(target_datetime):
+    """
+    Try to fetch a spring/neap percentage from an external source (e.g., Royal Navy).
+    Returns a float 0-100 on success, or None on any failure so callers fall back to the local estimator.
+
+    This implementation is intentionally conservative: it does not perform scraping unless
+    ENABLE_ROYAL_NAVY_LOOKUP=1 is set in the environment. If enabled, keep timeouts short
+    and validate parsed values carefully.
+    """
+    try:
+        import os
+        # Disabled by default for safety
+        if os.environ.get('ENABLE_ROYAL_NAVY_LOOKUP', '0') != '1':
+            return None
+
+        # Example fetch (placeholder): perform a short request and parse safely.
+        resp = requests.get('https://example-tides.example/royal-navy', timeout=5)
+        resp.raise_for_status()
+        # TODO: implement robust parsing of the external source here. Return a float.
+        return None
+    except Exception:
+        return None
+
+
 @app.route('/')
 def index():
     """Render main application page"""
