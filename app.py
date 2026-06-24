@@ -239,83 +239,83 @@ def plan_journey():
         
         start_time = datetime.fromisoformat(start_time_str)
         end_time = start_time + timedelta(hours=duration_hours)
-    
-    # Find nearest tide station (simplified - just use Southampton)
-    station = "Southampton"
-    
-    # Get tide data for the journey period
-    tide_request = {
-        "station": station,
-        "start_time": start_time_str,
-        "duration_hours": duration_hours
-    }
-    
-    # Calculate distance (simplified great circle)
-    lat1, lon1 = math.radians(start_loc['lat']), math.radians(start_loc['lon'])
-    lat2, lon2 = math.radians(end_loc['lat']), math.radians(end_loc['lon'])
-    
-    dlat = lat2 - lat1
-    dlon = lon2 - lon1
-    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-    c = 2 * math.asin(math.sqrt(a))
-    distance_km = 6371 * c
-    distance_nm = distance_km * 0.539957  # Convert to nautical miles
-    
-    # Get tide data - use manual spring percentage if provided, 
-    # otherwise try Royal Navy, then fall back to calculation
-    reference_time = start_time.replace(hour=6, minute=0, second=0)
-    if manual_spring_percentage is not None:
-        spring_percentage = float(manual_spring_percentage)
-        spring_source = "manual"
-    else:
-        # Try fetching from Royal Navy
-        try:
-            spring_percentage = fetch_royal_navy_spring_percentage(start_time)
-            if spring_percentage is not None:
-                spring_source = "Royal Navy"
-            else:
+
+        # Find nearest tide station (simplified - just use Southampton)
+        station = "Southampton"
+
+        # Get tide data for the journey period
+        tide_request = {
+            "station": station,
+            "start_time": start_time_str,
+            "duration_hours": duration_hours
+        }
+
+        # Calculate distance (simplified great circle)
+        lat1, lon1 = math.radians(start_loc['lat']), math.radians(start_loc['lon'])
+        lat2, lon2 = math.radians(end_loc['lat']), math.radians(end_loc['lon'])
+
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+        c = 2 * math.asin(math.sqrt(a))
+        distance_km = 6371 * c
+        distance_nm = distance_km * 0.539957  # Convert to nautical miles
+
+        # Get tide data - use manual spring percentage if provided,
+        # otherwise try Royal Navy, then fall back to calculation
+        reference_time = start_time.replace(hour=6, minute=0, second=0)
+        if manual_spring_percentage is not None:
+            spring_percentage = float(manual_spring_percentage)
+            spring_source = "manual"
+        else:
+            # Try fetching from Royal Navy
+            try:
+                spring_percentage = fetch_royal_navy_spring_percentage(start_time)
+                if spring_percentage is not None:
+                    spring_source = "Royal Navy"
+                else:
+                    spring_percentage = calculate_spring_neap_percentage(start_time)
+                    spring_source = "estimated"
+            except Exception as e:
+                print(f"Error fetching spring data: {e}")
                 spring_percentage = calculate_spring_neap_percentage(start_time)
                 spring_source = "estimated"
-        except Exception as e:
-            print(f"Error fetching spring data: {e}")
-            spring_percentage = calculate_spring_neap_percentage(start_time)
-            spring_source = "estimated"
-    
-    # Ensure spring_percentage is valid
-    if spring_percentage is None:
-        spring_percentage = 50.0  # Default fallback
-        spring_source = "default"
-    
-    spring_factor = spring_percentage / 100
-    high_tide = 4.5 + (1.0 * spring_factor)
-    low_tide = 1.0 - (0.5 * spring_factor)
-    
-    start_tide_height = calculate_tide_height(start_time, reference_time, high_tide, low_tide)
-    end_tide_height = calculate_tide_height(end_time, reference_time, high_tide, low_tide)
-    
-    # Estimate tidal flow impact (simplified)
-    tide_direction = "rising" if end_tide_height > start_tide_height else "falling"
-    flow_rate = abs(end_tide_height - start_tide_height) / duration_hours
-    
-    return jsonify({
-        "journey": {
-            "start_time": start_time.isoformat(),
-            "end_time": end_time.isoformat(),
-            "duration_hours": duration_hours,
-            "distance_km": round(distance_km, 2),
-            "distance_nm": round(distance_nm, 2)
-        },
-        "tides": {
-            "station": station,
-            "start_height": start_tide_height,
-            "end_height": end_tide_height,
-            "tide_direction": tide_direction,
-            "flow_rate": round(flow_rate, 2),
-            "spring_percentage": spring_percentage,
-            "spring_source": spring_source
-        }
-    })
-    
+
+        # Ensure spring_percentage is valid
+        if spring_percentage is None:
+            spring_percentage = 50.0  # Default fallback
+            spring_source = "default"
+
+        spring_factor = spring_percentage / 100
+        high_tide = 4.5 + (1.0 * spring_factor)
+        low_tide = 1.0 - (0.5 * spring_factor)
+
+        start_tide_height = calculate_tide_height(start_time, reference_time, high_tide, low_tide)
+        end_tide_height = calculate_tide_height(end_time, reference_time, high_tide, low_tide)
+
+        # Estimate tidal flow impact (simplified)
+        tide_direction = "rising" if end_tide_height > start_tide_height else "falling"
+        flow_rate = abs(end_tide_height - start_tide_height) / duration_hours
+
+        return jsonify({
+            "journey": {
+                "start_time": start_time.isoformat(),
+                "end_time": end_time.isoformat(),
+                "duration_hours": duration_hours,
+                "distance_km": round(distance_km, 2),
+                "distance_nm": round(distance_nm, 2)
+            },
+            "tides": {
+                "station": station,
+                "start_height": start_tide_height,
+                "end_height": end_tide_height,
+                "tide_direction": tide_direction,
+                "flow_rate": round(flow_rate, 2),
+                "spring_percentage": spring_percentage,
+                "spring_source": spring_source
+            }
+        })
+
     except Exception as e:
         print(f"Error in plan_journey: {e}")
         import traceback
