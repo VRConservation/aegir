@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from app import app, calculate_tide_height, calculate_spring_neap_percentage
+from app import app, calculate_tide_height, calculate_spring_neap_percentage, fetch_royal_navy_spring_percentage
 
 
 @pytest.fixture
@@ -19,6 +19,25 @@ def client():
             from app import db
             db.create_all()
         yield client
+
+
+class TestFetchRoyalNavySpringPercentage:
+    def test_returns_none_when_lookup_disabled(self, monkeypatch):
+        monkeypatch.delenv('ENABLE_ROYAL_NAVY_LOOKUP', raising=False)
+        result = fetch_royal_navy_spring_percentage(datetime(2026, 6, 15))
+        assert result is None
+
+    def test_returns_none_on_network_failure(self, monkeypatch):
+        monkeypatch.setenv('ENABLE_ROYAL_NAVY_LOOKUP', '1')
+        import app as app_module
+        import requests as req_module
+
+        def raise_error(*args, **kwargs):
+            raise req_module.exceptions.ConnectionError("network down")
+
+        monkeypatch.setattr(req_module, 'get', raise_error)
+        result = fetch_royal_navy_spring_percentage(datetime(2026, 6, 15))
+        assert result is None
 
 
 # --- Unit tests for pure functions ---
