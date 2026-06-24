@@ -3,10 +3,6 @@ import json
 import pytest
 from datetime import datetime
 
-import sys
-import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-
 from app import app, calculate_tide_height, calculate_spring_neap_percentage, fetch_royal_navy_spring_percentage
 
 
