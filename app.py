@@ -1,66 +1,29 @@
 """
 Kayak Journey Planner - Flask Backend
 """
-from flask import Flask, render_template, jsonify, request
-from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
+from flask import Flask, jsonify, request, render_template
 from datetime import datetime, timedelta
 import math
-import json
 import requests
-from bs4 import BeautifulSoup
-import re
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///launch_spots.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
-migrate = Migrate(app, db)
 
-# Database model for launch spots
-class LaunchSpot(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    lat = db.Column(db.Float, nullable=False)
-    lon = db.Column(db.Float, nullable=False)
-    description = db.Column(db.Text)
-    facilities = db.Column(db.JSON)
-    tide_station = db.Column(db.String(50))
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'lat': self.lat,
-            'lon': self.lon,
-            'description': self.description,
-            'facilities': self.facilities,
-            'tide_station': self.tide_station
-        }
-
-# Sample tide stations
+# Tide stations
 TIDE_STATIONS = {
     "Southampton": {
-        "lat": 50.9025,
-        "lon": -1.4042,
-        "name": "Southampton",
-        "country": "UK"
+        "lat": 50.9025, "lon": -1.4042,
+        "name": "Southampton", "country": "UK"
     },
     "Portsmouth": {
-        "lat": 50.8000,
-        "lon": -1.1087,
-        "name": "Portsmouth",
-        "country": "UK"
+        "lat": 50.8000, "lon": -1.1087,
+        "name": "Portsmouth", "country": "UK"
     }
 }
 
 
 def calculate_tide_height(time, reference_time, high_tide, low_tide, period=12.42):
-    """
-    Calculate tide height using simplified harmonic method
-    period: Average tidal period in hours (12.42 for semi-diurnal tides)
-    """
-    time_diff = (time - reference_time).total_seconds() / 3600  # hours
+    """Calculate tide height using simplified harmonic method."""
+    time_diff = (time - reference_time).total_seconds() / 3600
     tide_range = high_tide - low_tide
     phase = (time_diff / period) * 2 * math.pi
     height = low_tide + (tide_range / 2) * (1 + math.cos(phase))
@@ -68,104 +31,196 @@ def calculate_tide_height(time, reference_time, high_tide, low_tide, period=12.4
 
 
 def calculate_spring_neap_percentage(date):
-    """
-    Calculate spring/neap percentage based on lunar cycle
-    Returns percentage where 100% = springs, 0% = neaps
-    
-    NOTE: This is a simplified calculation. For production, use real tide API data
-    or astronomical libraries like ephem/skyfield for accurate moon phases.
-    """
-    # Convert to datetime if needed
+    """Calculate spring/neap percentage based on lunar cycle."""
     if not isinstance(date, datetime):
         try:
             date = datetime.fromisoformat(str(date))
-        except:
+        except Exception:
             date = datetime.now()
-    
-    # Known moon phases for June 2026:
-    # New Moon: May 31, 2026
-    # First Quarter: June 8, 2026
-    # Full Moon: June 14, 2026
-    # Last Quarter: June 22, 2026
-    
-    # Reference: New Moon on May 31, 2026
+
     new_moon = datetime(2026, 5, 31)
     days_since_new = (date - new_moon).days % 29.53
-    
-    # Springs occur around new/full moon (0 and ~14.76 days)
-    # Neaps occur around quarters (~7.38 and ~22.15 days)
-    # Springs take about 3 days to decay to mid-range
-    
     lunar_day = days_since_new
-    
-    # Calculate percentage based on distance from springs/neaps
-    if lunar_day <= 3:  # Just after new moon (springs)
+
+    if lunar_day <= 3:
         percentage = 100 - (lunar_day / 7.38) * 40
-    elif lunar_day <= 7.38:  # Approaching first quarter (neaps)
+    elif lunar_day <= 7.38:
         percentage = 60 - ((lunar_day - 3) / 4.38) * 60
-    elif lunar_day <= 11:  # Just after first quarter
+    elif lunar_day <= 11:
         percentage = 0 + ((lunar_day - 7.38) / 3.62) * 40
-    elif lunar_day <= 14.76:  # Approaching full moon (springs)
+    elif lunar_day <= 14.76:
         percentage = 40 + ((lunar_day - 11) / 3.76) * 60
-    elif lunar_day <= 18:  # Just after full moon (springs)
+    elif lunar_day <= 18:
         percentage = 100 - ((lunar_day - 14.76) / 3.24) * 40
-    elif lunar_day <= 22.15:  # Approaching last quarter (neaps)
+    elif lunar_day <= 22.15:
         percentage = 60 - ((lunar_day - 18) / 4.15) * 60
-    elif lunar_day <= 26:  # Just after last quarter
+    elif lunar_day <= 26:
         percentage = 0 + ((lunar_day - 22.15) / 3.85) * 40
-    else:  # Approaching new moon (springs)
+    else:
         percentage = 40 + ((lunar_day - 26) / 3.53) * 60
-    
+
     return round(max(0, min(100, percentage)), 1)
 
 
-def fetch_royal_navy_spring_percentage(target_datetime):
-    """
-    Try to fetch a spring/neap percentage from an external source (e.g., Royal Navy).
-    Returns a float 0-100 on success, or None on any failure so callers fall back to the local estimator.
-
-    This implementation is intentionally conservative: it does not perform scraping unless
-    ENABLE_ROYAL_NAVY_LOOKUP=1 is set in the environment. If enabled, keep timeouts short
-    and validate parsed values carefully.
-    """
+def fetch_weather(lat, lon, start_date, end_date):
+    """Fetch weather forecast from Open-Meteo API (free, no key required)."""
     try:
-        import os
-        # Disabled by default for safety
-        if os.environ.get('ENABLE_ROYAL_NAVY_LOOKUP', '0') != '1':
-            return None
-
-        # Example fetch (placeholder): perform a short request and parse safely.
-        resp = requests.get('https://example-tides.example/royal-navy', timeout=5)
+        resp = requests.get(
+            'https://api.open-meteo.com/v1/forecast',
+            params={
+                'latitude': lat,
+                'longitude': lon,
+                'hourly': ','.join([
+                    'temperature_2m',
+                    'windspeed_10m',
+                    'winddirection_10m',
+                    'precipitation_probability',
+                    'precipitation',
+                    'weathercode',
+                    'visibility',
+                ]),
+                'start_date': start_date,
+                'end_date': end_date,
+                'timezone': 'Europe/London',
+            },
+            timeout=10,
+        )
         resp.raise_for_status()
-        # TODO: implement robust parsing of the external source here. Return a float.
-        return None
-    except Exception:
+        data = resp.json()
+
+        hourly = data.get('hourly', {})
+        times = hourly.get('time', [])
+
+        return {
+            'times': times,
+            'temperature': hourly.get('temperature_2m', []),
+            'wind_speed': hourly.get('windspeed_10m', []),
+            'wind_direction': hourly.get('winddirection_10m', []),
+            'precipitation_probability': hourly.get('precipitation_probability', []),
+            'precipitation': hourly.get('precipitation', []),
+            'weather_code': hourly.get('weathercode', []),
+            'visibility': hourly.get('visibility', []),
+        }
+    except Exception as e:
+        app.logger.error(f'Weather API error: {e}')
         return None
 
+
+def weather_code_description(code):
+    """Convert WMO weather code to human-readable description."""
+    descriptions = {
+        0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+        45: 'Fog', 48: 'Rime fog',
+        51: 'Light drizzle', 53: 'Moderate drizzle', 55: 'Dense drizzle',
+        56: 'Freezing drizzle', 57: 'Dense freezing drizzle',
+        61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
+        66: 'Freezing rain', 67: 'Heavy freezing rain',
+        71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow',
+        77: 'Snow grains',
+        80: 'Slight rain showers', 81: 'Moderate rain showers', 82: 'Violent rain showers',
+        85: 'Slight snow showers', 86: 'Heavy snow showers',
+        95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with heavy hail',
+    }
+    return descriptions.get(code, f'Unknown ({code})')
+
+
+def wind_direction_name(degrees):
+    """Convert wind direction in degrees to compass direction."""
+    if degrees is None:
+        return 'N/A'
+    dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
+            'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
+    idx = round(degrees / 22.5) % 16
+    return dirs[idx]
+
+
+# --- Routes ---
 
 @app.route('/')
 def index():
-    """Render main application page"""
     return render_template('index.html')
 
 
-@app.route('/api/launch-spots')
-def get_launch_spots():
-    """Get all launch spots"""
-    spots = LaunchSpot.query.all()
-    return jsonify([spot.to_dict() for spot in spots])
+@app.route('/api/geocode', methods=['POST'])
+def geocode():
+    """
+    Search for a location using Nominatim (OpenStreetMap).
+    Expects JSON: {"query": "Southampton, UK"}
+    """
+    data = request.json
+    query = data.get('query', '').strip()
+    if not query:
+        return jsonify({'error': 'query is required'}), 400
+
+    try:
+        resp = requests.get(
+            'https://nominatim.openstreetmap.org/search',
+            params={
+                'q': query,
+                'format': 'json',
+                'limit': 8,
+                'countrycodes': 'gb',
+            },
+            headers={'User-Agent': 'KayakJourneyPlanner/1.0'},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        results = resp.json()
+        return jsonify([{
+            'name': r.get('display_name', ''),
+            'short_name': r.get('display_name', '').split(',')[0],
+            'lat': float(r['lat']),
+            'lon': float(r['lon']),
+        } for r in results])
+    except Exception as e:
+        app.logger.error(f'Geocode error: {e}')
+        return jsonify({'error': 'Geocoding failed'}), 502
 
 
 @app.route('/api/tide-stations')
 def get_tide_stations():
-    """Get all tide stations"""
     return jsonify(TIDE_STATIONS)
+
+
+@app.route('/api/weather', methods=['POST'])
+def get_weather():
+    """
+    Fetch weather for a location and date range.
+    Expects JSON: {
+        "lat": 50.899,
+        "lon": -1.385,
+        "start_date": "2026-06-03",
+        "end_date": "2026-06-03"
+    }
+    """
+    data = request.json
+    lat = data.get('lat', 50.9)
+    lon = data.get('lon', -1.4)
+    start_date = data.get('start_date')
+    end_date = data.get('end_date', start_date)
+
+    if not start_date:
+        return jsonify({'error': 'start_date is required'}), 400
+
+    weather = fetch_weather(lat, lon, start_date, end_date)
+    if weather is None:
+        return jsonify({'error': 'Failed to fetch weather data'}), 502
+
+    # Add descriptions
+    weather['weather_descriptions'] = [
+        weather_code_description(c) for c in weather['weather_code']
+    ]
+    weather['wind_direction_names'] = [
+        wind_direction_name(d) for d in weather['wind_direction']
+    ]
+
+    return jsonify(weather)
 
 
 @app.route('/api/tides', methods=['POST'])
 def get_tides():
     """
-    Calculate tide predictions for a given location and time period
+    Calculate tide predictions for a given location and time period.
     Expects JSON: {
         "station": "Southampton",
         "start_time": "2026-06-03T08:00:00",
@@ -176,50 +231,43 @@ def get_tides():
     station = data.get('station', 'Southampton')
     start_time_str = data.get('start_time')
     duration_hours = data.get('duration_hours', 4)
-    
+
+    if not start_time_str:
+        return jsonify({'error': 'start_time is required'}), 400
+
     start_time = datetime.fromisoformat(start_time_str)
-    
-    # Generate tide predictions (in production, use real tide API)
-    # This is simplified - real tides are more complex
-    tide_data = []
-    
-    # Calculate reference high tide (assume 6 hours after midnight)
     reference_time = start_time.replace(hour=6, minute=0, second=0)
     if start_time.hour < 6:
         reference_time = reference_time - timedelta(days=1)
-    
-    # Get spring/neap percentage
+
     spring_percentage = calculate_spring_neap_percentage(start_time)
-    
-    # Tide heights (meters) - adjusted by spring/neap
     spring_factor = spring_percentage / 100
-    high_tide = 4.5 + (1.0 * spring_factor)  # Higher on springs
-    low_tide = 1.0 - (0.5 * spring_factor)   # Lower on springs
-    
-    # Generate hourly predictions
+    high_tide = 4.5 + (1.0 * spring_factor)
+    low_tide = 1.0 - (0.5 * spring_factor)
+
+    tide_data = []
     for i in range(duration_hours + 1):
-        time = start_time + timedelta(hours=i)
-        height = calculate_tide_height(time, reference_time, high_tide, low_tide)
-        
+        t = start_time + timedelta(hours=i)
+        height = calculate_tide_height(t, reference_time, high_tide, low_tide)
         tide_data.append({
-            "time": time.isoformat(),
+            "time": t.isoformat(),
             "height": height,
-            "station": station
+            "station": station,
         })
-    
+
     return jsonify({
         "tides": tide_data,
         "spring_percentage": spring_percentage,
         "high_tide": round(high_tide, 2),
         "low_tide": round(low_tide, 2),
-        "station": station
+        "station": station,
     })
 
 
 @app.route('/api/journey-plan', methods=['POST'])
 def plan_journey():
     """
-    Plan a journey with tide information
+    Plan a journey with tide and weather information.
     Expects JSON: {
         "start_location": {"lat": 50.899, "lon": -1.385},
         "end_location": {"lat": 50.810, "lon": -1.305},
@@ -229,73 +277,79 @@ def plan_journey():
     """
     try:
         data = request.json
-        print(f"Received request: {data}")  # Debug logging
-        
         start_loc = data.get('start_location')
         end_loc = data.get('end_location')
         start_time_str = data.get('start_time')
         duration_hours = data.get('duration_hours', 3)
-        manual_spring_percentage = data.get('spring_percentage')  # Optional manual override
-        
+        manual_spring_percentage = data.get('spring_percentage')
+
+        if not start_loc or not end_loc or not start_time_str:
+            return jsonify({'error': 'start_location, end_location, and start_time are required'}), 400
+
         start_time = datetime.fromisoformat(start_time_str)
         end_time = start_time + timedelta(hours=duration_hours)
 
-        # Find nearest tide station (simplified - just use Southampton)
         station = "Southampton"
 
-        # Get tide data for the journey period
-        tide_request = {
-            "station": station,
-            "start_time": start_time_str,
-            "duration_hours": duration_hours
-        }
-
-        # Calculate distance (simplified great circle)
+        # Calculate distance (Haversine)
         lat1, lon1 = math.radians(start_loc['lat']), math.radians(start_loc['lon'])
         lat2, lon2 = math.radians(end_loc['lat']), math.radians(end_loc['lon'])
-
         dlat = lat2 - lat1
         dlon = lon2 - lon1
         a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
         c = 2 * math.asin(math.sqrt(a))
         distance_km = 6371 * c
-        distance_nm = distance_km * 0.539957  # Convert to nautical miles
+        distance_nm = distance_km * 0.539957
 
-        # Get tide data - use manual spring percentage if provided,
-        # otherwise try Royal Navy, then fall back to calculation
-        reference_time = start_time.replace(hour=6, minute=0, second=0)
+        # Spring/neap
         if manual_spring_percentage is not None:
             spring_percentage = float(manual_spring_percentage)
             spring_source = "manual"
         else:
-            # Try fetching from Royal Navy
-            try:
-                spring_percentage = fetch_royal_navy_spring_percentage(start_time)
-                if spring_percentage is not None:
-                    spring_source = "Royal Navy"
-                else:
-                    spring_percentage = calculate_spring_neap_percentage(start_time)
-                    spring_source = "estimated"
-            except Exception as e:
-                print(f"Error fetching spring data: {e}")
-                spring_percentage = calculate_spring_neap_percentage(start_time)
-                spring_source = "estimated"
+            spring_percentage = calculate_spring_neap_percentage(start_time)
+            spring_source = "estimated"
 
-        # Ensure spring_percentage is valid
         if spring_percentage is None:
-            spring_percentage = 50.0  # Default fallback
+            spring_percentage = 50.0
             spring_source = "default"
 
         spring_factor = spring_percentage / 100
         high_tide = 4.5 + (1.0 * spring_factor)
         low_tide = 1.0 - (0.5 * spring_factor)
 
+        reference_time = start_time.replace(hour=6, minute=0, second=0)
         start_tide_height = calculate_tide_height(start_time, reference_time, high_tide, low_tide)
         end_tide_height = calculate_tide_height(end_time, reference_time, high_tide, low_tide)
 
-        # Estimate tidal flow impact (simplified)
         tide_direction = "rising" if end_tide_height > start_tide_height else "falling"
         flow_rate = abs(end_tide_height - start_tide_height) / duration_hours
+
+        # Fetch weather for the journey period
+        mid_lat = (start_loc['lat'] + end_loc['lat']) / 2
+        mid_lon = (start_loc['lon'] + end_loc['lon']) / 2
+        weather = fetch_weather(
+            mid_lat, mid_lon,
+            start_time.strftime('%Y-%m-%d'),
+            end_time.strftime('%Y-%m-%d'),
+        )
+
+        # Extract weather summary for the start hour
+        weather_summary = None
+        if weather and weather['times']:
+            start_hour = start_time.hour
+            for i, t in enumerate(weather['times']):
+                dt = datetime.fromisoformat(t)
+                if dt.date() == start_time.date() and dt.hour == start_hour:
+                    wind_dir_raw = weather['wind_direction'][i] if i < len(weather['wind_direction']) else None
+                    wc = weather['weather_code'][i] if i < len(weather['weather_code']) else None
+                    weather_summary = {
+                        'temperature': weather['temperature'][i] if i < len(weather['temperature']) else None,
+                        'wind_speed': weather['wind_speed'][i] if i < len(weather['wind_speed']) else None,
+                        'wind_direction': wind_direction_name(wind_dir_raw),
+                        'precipitation_probability': weather['precipitation_probability'][i] if i < len(weather['precipitation_probability']) else None,
+                        'weather_description': weather_code_description(wc) if wc is not None else None,
+                    }
+                    break
 
         return jsonify({
             "journey": {
@@ -303,7 +357,7 @@ def plan_journey():
                 "end_time": end_time.isoformat(),
                 "duration_hours": duration_hours,
                 "distance_km": round(distance_km, 2),
-                "distance_nm": round(distance_nm, 2)
+                "distance_nm": round(distance_nm, 2),
             },
             "tides": {
                 "station": station,
@@ -312,16 +366,21 @@ def plan_journey():
                 "tide_direction": tide_direction,
                 "flow_rate": round(flow_rate, 2),
                 "spring_percentage": spring_percentage,
-                "spring_source": spring_source
-            }
+                "spring_source": spring_source,
+            },
+            "weather": weather_summary,
         })
 
     except Exception as e:
-        print(f"Error in plan_journey: {e}")
-        import traceback
-        traceback.print_exc()
+        app.logger.error(f'Error in plan_journey: {e}')
         return jsonify({"error": str(e)}), 500
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print()
+    print("  🛶 Kayak Journey Planner")
+    print("  ───────────────────────")
+    print("  🚀 Running at http://localhost:5080")
+    print("  📍 Press Ctrl+C to stop")
+    print()
+    app.run(debug=True, host='0.0.0.0', port=5080)
