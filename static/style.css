@@ -468,13 +468,16 @@ input[type="range"] {
 /* Responsive */
 @media (max-width: 768px) {
     .map-layout {
-        height: auto;
+        height: calc(100vh - 80px);
+        min-height: 0;
+        overflow: visible;
     }
     .map-cards-row {
         flex-direction: column;
     }
     .full-map {
-        height: 50vh;
+        flex: 1;
+        min-height: 250px;
     }
 }
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }

@@ -432,7 +432,7 @@ function initMainMap() {
     fitMapBounds();
     renderMapSummary();
 
-    setTimeout(() => mainMap.invalidateSize(), 100);
+    setTimeout(() => mainMap.invalidateSize(), 300);
 }
 
 function addWaypoint(lat, lon) {
