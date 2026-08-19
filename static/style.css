@@ -67,6 +67,11 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 0.25rem;
+    cursor: pointer;
+}
+.step:not(.completed):not(.active) {
+    pointer-events: none;
+    opacity: 0.5;
 }
 .step-number {
     width: 32px;
@@ -88,6 +93,9 @@ body {
 .step.completed .step-number {
     background: var(--success);
     color: white;
+}
+.step.completed:hover .step-number {
+    filter: brightness(0.85);
 }
 .step-label {
     font-size: 0.75rem;
@@ -381,27 +389,37 @@ input[type="range"] {
     border: 1px solid var(--border);
     overflow: hidden;
 }
-.map-sidebar {
+.map-top-bar {
     flex-shrink: 0;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     padding: 0.75rem 1rem;
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.map-top-row {
+    display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 1rem;
 }
-.map-sidebar h2 {
+.map-top-row h2 {
     font-size: 1rem;
     margin: 0;
-    padding: 0;
-    border-bottom: none;
+    white-space: nowrap;
 }
-.map-sidebar h2 {
-    font-size: 1rem;
-    margin: 0;
-    padding: 0;
-    border-bottom: none;
+.map-cards-row {
+    display: flex;
+    gap: 0.5rem;
+}
+.map-cards-row .map-summary-card {
+    flex: 1;
+    min-width: 0;
+}
+.map-top-nav {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
 }
 .map-legend { display: flex; gap: 0.75rem; font-size: 0.8rem; flex-wrap: wrap; }
 .legend-item { display: flex; align-items: center; gap: 0.3rem; }
@@ -440,11 +458,6 @@ input[type="range"] {
 .advice-card.danger { border-left-color: var(--danger); }
 .advice-card h4 { margin-bottom: 0.25rem; }
 .advice-text { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
-.waypoint-hint {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    line-height: 1.4;
-}
 .full-map {
     flex: 1;
     min-height: 0;
@@ -455,8 +468,8 @@ input[type="range"] {
     .map-layout {
         height: auto;
     }
-    .map-sidebar {
-        flex-wrap: wrap;
+    .map-cards-row {
+        flex-direction: column;
     }
     .full-map {
         height: 50vh;

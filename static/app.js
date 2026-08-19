@@ -40,6 +40,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
     setupSearch('start');
     setupSearch('end');
+
+    document.querySelectorAll('.step').forEach(step => {
+        step.style.cursor = 'pointer';
+        step.addEventListener('click', function () {
+            const n = parseInt(this.dataset.step);
+            if (n < state.step) goToStep(n);
+        });
+    });
 });
 
 // --- Wizard Navigation ---
@@ -289,7 +297,7 @@ function assessConditions(weather, tides) {
     if (tides.flow_rate > 2) issues += 2;
     else if (tides.flow_rate > 1) issues += 1;
 
-    if (issues === 0) return { label: 'GO', color: 'success' };
+    if (issues === 0) return { label: 'TRIP NOTE', color: 'success' };
     if (issues <= 2) return { label: 'CAUTION', color: 'warning' };
     return { label: 'NO GO', color: 'danger' };
 }

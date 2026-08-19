@@ -150,32 +150,26 @@
         <!-- Step 4: Map -->
         <div class="wizard-panel" id="step-4">
             <div class="map-layout">
-                <!-- Conditions sidebar -->
-                <div class="map-sidebar" id="map-sidebar">
-                    <h2>Your Journey</h2>
-
-                    <div class="map-legend">
-                        <span class="legend-item"><span class="legend-dot start"></span> Start</span>
-                        <span class="legend-item"><span class="legend-dot waypoint"></span> Waypoint</span>
-                        <span class="legend-item"><span class="legend-dot end"></span> End</span>
+                <div class="map-top-bar" id="map-sidebar">
+                    <div class="map-top-row">
+                        <h2>Your Journey</h2>
+                        <div class="map-legend">
+                            <span class="legend-item"><span class="legend-dot start"></span> Start</span>
+                            <span class="legend-item"><span class="legend-dot waypoint"></span> Waypoint</span>
+                            <span class="legend-item"><span class="legend-dot end"></span> End</span>
+                        </div>
                     </div>
-
-                    <div id="map-weather-summary" class="map-summary-card"></div>
-                    <div id="map-tide-summary" class="map-summary-card"></div>
-                    <div id="map-route-summary" class="map-summary-card"></div>
+                    <div class="map-cards-row">
+                        <div id="map-weather-summary" class="map-summary-card"></div>
+                        <div id="map-tide-summary" class="map-summary-card"></div>
+                        <div id="map-route-summary" class="map-summary-card"></div>
+                    </div>
                     <div id="map-tide-advice" class="map-summary-card advice-card"></div>
-
-                    <div class="waypoint-hint">
-                        <small>Click the map to add intermediate waypoints. Right-click a waypoint to remove it.</small>
-                    </div>
-
-                    <div class="wizard-nav">
+                    <div class="map-top-nav">
                         <button class="btn-secondary" onclick="goToStep(3)">Back</button>
                         <button class="btn-primary" onclick="goToStep(1)">Start Over</button>
                     </div>
                 </div>
-
-                <!-- Map -->
                 <div id="main-map" class="full-map"></div>
             </div>
         </div>
