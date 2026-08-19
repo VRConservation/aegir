@@ -35,7 +35,7 @@ Open http://localhost:5080
 |--------|-------|-------------|
 | GET | `/` | Main app |
 | POST | `/api/geocode` | Search locations (Nominatim) |
-| GET | `/api/tide-stations` | List tide stations |
+| GET | `/api/tide-stations` | tidetimes/UKHO |
 | POST | `/api/weather` | Weather forecast (Open-Meteo) |
 | POST | `/api/tides` | Tide predictions |
 | POST | `/api/journey-plan` | Full journey plan with estimated duration |

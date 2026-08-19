@@ -206,7 +206,6 @@ async function fetchConditions() {
                 end_location: { lat: state.end.lat, lon: state.end.lon },
                 start_time: startDateTime,
                 waypoints: state.waypoints.map(wp => ({ lat: wp.lat, lon: wp.lon })),
-                spring_percentage: state.springPercentage,
             }),
         });
 
@@ -252,10 +251,13 @@ function renderConditions(data) {
     const tideEl = document.getElementById('tide-info');
     const tideDir = t.tide_direction === 'rising' ? '&#9650; Rising' : '&#9660; Falling';
     const tideColor = t.tide_direction === 'rising' ? 'var(--success)' : 'var(--warning)';
+    const nextHwp = t.next_hwp ? `Next HWP: ${t.next_hwp.time} (${t.next_hwp.height}m)` : '';
+    const nextLwp = t.next_lwp ? `Next LWP: ${t.next_lwp.time} (${t.next_lwp.height}m)` : '';
     tideEl.innerHTML = `
         <div class="big-value" style="color: ${tideColor}">${tideDir}</div>
         <div class="detail">Start: ${t.start_height}m &rarr; End: ${t.end_height}m</div>
-        <div class="detail">Spring/Neap: ${t.spring_percentage}%</div>
+        <div class="detail">${nextHwp}${nextHwp && nextLwp ? ' &middot; ' : ''}${nextLwp}</div>
+        <div class="detail">Tide range: ${t.tide_range}m (${t.spring_label})</div>
         <div class="detail">Flow rate: ~${t.flow_rate} m/hr</div>
     `;
 
@@ -315,7 +317,7 @@ async function fetchTideChart() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                station: 'Southampton',
+                station: 'Portsmouth',
                 start_time: startDateTime,
                 duration_hours: Math.max(state.journeyData?.journey?.duration_hours || 4, 12),
             }),
@@ -545,12 +547,16 @@ function renderMapSummary() {
     // Tides
     const tideEl = document.getElementById('map-tide-summary');
     const tideDir = t.tide_direction === 'rising' ? '\u25B2 Rising' : '\u25BC Falling';
+    const nextHwp = t.next_hwp ? `HWP: ${t.next_hwp.time} (${t.next_hwp.height}m)` : '';
+    const nextLwp = t.next_lwp ? `LWP: ${t.next_lwp.time} (${t.next_lwp.height}m)` : '';
     tideEl.innerHTML = `
         <h4>Tides</h4>
         <div class="map-summary-row"><span>Direction</span><span>${tideDir}</span></div>
         <div class="map-summary-row"><span>Height</span><span>${t.start_height}m \u2192 ${t.end_height}m</span></div>
         <div class="map-summary-row"><span>Flow</span><span>~${t.flow_rate} m/hr</span></div>
-        <div class="map-summary-row"><span>Spring/Neap</span><span>${t.spring_percentage}%</span></div>
+        <div class="map-summary-row"><span>${nextHwp}</span></div>
+        <div class="map-summary-row"><span>${nextLwp}</span></div>
+        <div class="map-summary-row"><span>Range</span><span>${t.tide_range}m (${t.spring_label})</span></div>
     `;
 
     // Route
@@ -640,14 +646,16 @@ function tripData() {
     const temp = w ? `${w.temperature}\u00B0C` : '-';
     const precip = w && w.precipitation_probability != null ? `${w.precipitation_probability}%` : '-';
     const tideDir = t.tide_direction === 'rising' ? 'Rising' : 'Falling';
-    const springs = t.spring_percentage >= 75 ? 'Springs' : t.spring_percentage <= 25 ? 'Neaps' : 'Mid tide';
+    const nextHwp = t.next_hwp ? `${t.next_hwp.time} (${t.next_hwp.height}m)` : '-';
+    const nextLwp = t.next_lwp ? `${t.next_lwp.time} (${t.next_lwp.height}m)` : '-';
     const routeDist = totalRouteDistance();
     const routeNm = (routeDist * 0.539957).toFixed(1);
 
     return {
         dateStr, startStr, endStr, wind, temp, precip,
         tideDir, tideStart: t.start_height, tideEnd: t.end_height,
-        springs, flowRate: t.flow_rate,
+        nextHwp, nextLwp, springLabel: t.spring_label,
+        tideRange: t.tide_range, flowRate: t.flow_rate,
         distKm: routeDist.toFixed(1), distNm: routeNm,
         startName: state.start.name, endName: state.end.name,
     };
@@ -671,8 +679,9 @@ Group size:
 Hi/lo: ${d.tideStart}m \u2192 ${d.tideEnd}m (${d.tideDir})
 Wind: ${d.wind}
 Water temp: ${d.temp} (rain chance: ${d.precip})
-HW Portsmouth:
-Springs: ${d.springs} (${d.flowRate} m/hr)
+HWP: ${d.nextHwp}
+LWP: ${d.nextLwp}
+${d.springLabel}: tide range ${d.tideRange}m (${d.flowRate} m/hr)
 
 [b]EQUIPMENT[/b]
 Dress for immersion, helmets, and towline required.
@@ -724,8 +733,9 @@ function exportPDF() {
 <tr><td>Hi/lo:</td><td>${d.tideStart}m &rarr; ${d.tideEnd}m (${d.tideDir})</td></tr>
 <tr><td>Wind:</td><td>${d.wind}</td></tr>
 <tr><td>Water temp:</td><td>${d.temp} (rain chance: ${d.precip})</td></tr>
-<tr><td>HW Portsmouth:</td><td></td></tr>
-<tr><td>Springs:</td><td>${d.springs} (${d.flowRate} m/hr)</td></tr>
+<tr><td>HWP:</td><td>${d.nextHwp}</td></tr>
+<tr><td>LWP:</td><td>${d.nextLwp}</td></tr>
+<tr><td>${d.springLabel}:</td><td>tide range ${d.tideRange}m (${d.flowRate} m/hr)</td></tr>
 </table>
 
 <h2>Equipment</h2>
