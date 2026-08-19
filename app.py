@@ -1,7 +1,7 @@
 """
 Aegir - Kayak Journey Planner
 """
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 from flask import Flask, jsonify, request, render_template
 from datetime import datetime, timedelta
