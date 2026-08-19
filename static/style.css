@@ -458,8 +458,8 @@ input[type="range"] {
 .advice-card.danger { border-left-color: var(--danger); }
 .advice-card h4 { margin-bottom: 0.25rem; }
 .advice-text { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
-.waypoint-hint { text-align: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem; }
-.waypoint-hint small { color: var(--text-muted); }
+.waypoint-hint { text-align: center; padding: 0.5rem; background: rgba(37,99,235,0.08); border-radius: 8px; margin-bottom: 0.5rem; }
+.waypoint-hint small { color: #2563eb; }
 .full-map {
     flex: 1;
     min-height: 0;
@@ -477,6 +477,20 @@ input[type="range"] {
         height: 50vh;
     }
 }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.modal.hidden { display: none; }
+.modal-content { background: var(--surface); border-radius: var(--radius); width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+.modal-header h2 { font-size: 1.1rem; }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); }
+.modal-tabs { display: flex; border-bottom: 1px solid var(--border); }
+.modal-tab { flex: 1; padding: 0.6rem; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 0.85rem; color: var(--text-muted); }
+.modal-tab.active { border-bottom-color: var(--primary); color: var(--primary); font-weight: 600; }
+.export-pane { padding: 1rem 1.25rem; flex: 1; overflow: auto; }
+.export-pane.hidden { display: none; }
+.export-pane textarea { width: 100%; min-height: 300px; font-family: monospace; font-size: 0.8rem; border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; resize: vertical; background: var(--bg); color: var(--text); }
+.modal-content .btn-primary { margin: 0 1.25rem 1rem; }
+
 @media (max-width: 600px) {
     .form-row { grid-template-columns: 1fr; }
     .conditions-grid { grid-template-columns: 1fr; }

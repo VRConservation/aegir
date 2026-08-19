@@ -601,3 +601,155 @@ function formatDateTime(iso) {
         hour: '2-digit', minute: '2-digit',
     });
 }
+
+// --- Export ---
+let currentExportTab = 'bbcode';
+
+function exportTrip() {
+    if (!state.journeyData) return;
+    const bbcode = generateBBCode();
+    document.getElementById('export-bbcode-text').value = bbcode;
+    document.getElementById('export-modal').classList.remove('hidden');
+}
+
+function closeExport() {
+    document.getElementById('export-modal').classList.add('hidden');
+}
+
+function switchExportTab(tab, btn) {
+    currentExportTab = tab;
+    document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('export-bbcode').classList.toggle('hidden', tab !== 'bbcode');
+}
+
+function copyExport() {
+    const textarea = document.getElementById(`export-${currentExportTab}-text`);
+    navigator.clipboard.writeText(textarea.value);
+}
+
+function tripData() {
+    const j = state.journeyData.journey;
+    const t = state.journeyData.tides;
+    const w = state.journeyData.weather;
+    const date = new Date(state.date + 'T00:00:00');
+    const dateStr = date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const startStr = formatDateTime(j.start_time).split(',').slice(1).join(',').trim();
+    const endStr = formatDateTime(j.end_time).split(',').slice(1).join(',').trim();
+    const wind = w ? `${w.wind_speed} km/h ${w.wind_direction || ''}`.trim() : '-';
+    const temp = w ? `${w.temperature}\u00B0C` : '-';
+    const precip = w && w.precipitation_probability != null ? `${w.precipitation_probability}%` : '-';
+    const tideDir = t.tide_direction === 'rising' ? 'Rising' : 'Falling';
+    const springs = t.spring_percentage >= 75 ? 'Springs' : t.spring_percentage <= 25 ? 'Neaps' : 'Mid tide';
+    const routeDist = totalRouteDistance();
+    const routeNm = (routeDist * 0.539957).toFixed(1);
+
+    return {
+        dateStr, startStr, endStr, wind, temp, precip,
+        tideDir, tideStart: t.start_height, tideEnd: t.end_height,
+        springs, flowRate: t.flow_rate,
+        distKm: routeDist.toFixed(1), distNm: routeNm,
+        startName: state.start.name, endName: state.end.name,
+    };
+}
+
+function generateBBCode() {
+    const d = tripData();
+    return `[b]SUMMARY[/b]
+
+[b]PLAN[/b]
+Trip: ${d.dateStr} ${d.startName} to ${d.endName} (${d.distKm} km / ${d.distNm} nm)
+Briefing:
+On the water: ${d.startStr} - ${d.endStr}
+Lunch:
+Off the water:
+Leader: Vance Russell
+Co-leader:
+Group size:
+
+[b]CONDITIONS[/b]
+Hi/lo: ${d.tideStart}m \u2192 ${d.tideEnd}m (${d.tideDir})
+Wind: ${d.wind}
+Water temp: ${d.temp} (rain chance: ${d.precip})
+HW Portsmouth:
+Springs: ${d.springs} (${d.flowRate} m/hr)
+
+[b]EQUIPMENT[/b]
+Dress for immersion, helmets, and towline required.
+
+[b]CONTACTS[/b]
+Shore contact:
+My contact: 07725 467072
+
+[i]By signing up for this trip here, you should have read, understood and consented to the club trip check list and risk assessment.  Happy to have a chat if you have any queries.[/i]`;
+}
+
+function exportPDF() {
+    const d = tripData();
+    const html = `<!DOCTYPE html>
+<html><head><title>Trip ${d.dateStr}</title>
+<style>
+  body { font-family: sans-serif; max-width: 700px; margin: 2rem auto; color: #111; line-height: 1.5; }
+  h2 { font-size: 1.1rem; text-transform: uppercase; border-bottom: 2px solid #111; padding-bottom: 0.25rem; margin-top: 1.5rem; }
+  h1 { font-size: 1.4rem; margin-bottom: 0.25rem; }
+  table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+  td { padding: 0.2rem 0.5rem; vertical-align: top; }
+  td:first-child { font-weight: bold; white-space: nowrap; width: 140px; }
+  .disclaimer { font-style: italic; font-size: 0.85rem; color: #555; margin-top: 1.5rem; border-top: 1px solid #ccc; padding-top: 0.75rem; }
+  .map-img { width: 100%; border: 1px solid #ccc; border-radius: 4px; margin: 0.5rem 0; }
+  @media print { body { margin: 0; } }
+</style></head><body>
+<h1>Aegir Kayak Trip</h1>
+<p>${d.dateStr}</p>
+
+<h2>Route Map</h2>
+<img class="map-img" id="map-screenshot" src="" alt="Route map">
+
+<h2>Plan</h2>
+<table>
+<tr><td>Trip:</td><td>${d.startName} to ${d.endName} (${d.distKm} km / ${d.distNm} nm)</td></tr>
+<tr><td>Briefing:</td><td></td></tr>
+<tr><td>On the water:</td><td>${d.startStr} - ${d.endStr}</td></tr>
+<tr><td>Lunch:</td><td></td></tr>
+<tr><td>Off the water:</td><td></td></tr>
+<tr><td>Leader:</td><td>Vance Russell</td></tr>
+<tr><td>Co-leader:</td><td></td></tr>
+<tr><td>Group size:</td><td></td></tr>
+</table>
+
+<h2>Conditions</h2>
+<table>
+<tr><td>Hi/lo:</td><td>${d.tideStart}m &rarr; ${d.tideEnd}m (${d.tideDir})</td></tr>
+<tr><td>Wind:</td><td>${d.wind}</td></tr>
+<tr><td>Water temp:</td><td>${d.temp} (rain chance: ${d.precip})</td></tr>
+<tr><td>HW Portsmouth:</td><td></td></tr>
+<tr><td>Springs:</td><td>${d.springs} (${d.flowRate} m/hr)</td></tr>
+</table>
+
+<h2>Equipment</h2>
+<p>Dress for immersion, helmets, and towline required.</p>
+
+<h2>Contacts</h2>
+<table>
+<tr><td>Shore contact:</td><td></td></tr>
+<tr><td>My contact:</td><td>07725 467072</td></tr>
+</table>
+
+<p class="disclaimer">By signing up for this trip here, you should have read, understood and consented to the club trip check list and risk assessment. Happy to have a chat if you have any queries.</p>
+</body></html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+
+    const script = win.document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+    script.onload = function () {
+        const mapEl = mainMap.getContainer();
+        win.html2canvas(mapEl, { useCORS: true }).then(canvas => {
+            win.document.getElementById('map-screenshot').src = canvas.toDataURL('image/png');
+            win.print();
+        });
+    };
+    win.document.head.appendChild(script);
+}

@@ -164,16 +164,35 @@
                         <div id="map-tide-summary" class="map-summary-card"></div>
                         <div id="map-route-summary" class="map-summary-card"></div>
                     </div>
-                    <div class="waypoint-hint">
-                        <small>Click the map to add intermediate waypoints. Right-click a waypoint to remove it.</small>
-                    </div>
                     <div id="map-tide-advice" class="map-summary-card advice-card"></div>
                     <div class="map-top-nav">
                         <button class="btn-secondary" onclick="goToStep(3)">Back</button>
                         <button class="btn-primary" onclick="goToStep(1)">Start Over</button>
+                        <button class="btn-primary" onclick="exportTrip()">Export</button>
                     </div>
                 </div>
+                <div class="waypoint-hint">
+                    <small>Click the map to add intermediate waypoints. Right-click a waypoint to remove it.</small>
+                </div>
                 <div id="main-map" class="full-map"></div>
+            </div>
+        </div>
+
+        <!-- Export Modal -->
+        <div id="export-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Export Trip</h2>
+                    <button class="modal-close" onclick="closeExport()">&times;</button>
+                </div>
+                <div class="modal-tabs">
+                    <button class="modal-tab active" onclick="switchExportTab('bbcode', this)">Forum (BBCode)</button>
+                    <button class="modal-tab" onclick="exportPDF()">PDF</button>
+                </div>
+                <div id="export-bbcode" class="export-pane">
+                    <textarea id="export-bbcode-text" readonly></textarea>
+                </div>
+                <button class="btn-primary" onclick="copyExport()">Copy to clipboard</button>
             </div>
         </div>
     </div>
