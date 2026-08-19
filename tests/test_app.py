@@ -1,4 +1,4 @@
-"""Tests for the Kayak Journey Planner Flask app."""
+"""Tests for Aegir Kayak Journey Planner."""
 import json
 import pytest
 from datetime import datetime
@@ -83,7 +83,6 @@ class TestRoutes:
             "start_location": {"lat": 50.899, "lon": -1.385},
             "end_location": {"lat": 50.810, "lon": -1.305},
             "start_time": "2026-06-15T08:00:00",
-            "duration_hours": 3
         }
         response = client.post(
             '/api/journey-plan',
@@ -94,15 +93,32 @@ class TestRoutes:
         data = json.loads(response.data)
         assert 'journey' in data
         assert 'tides' in data
-        assert data['journey']['duration_hours'] == 3
+        assert data['journey']['duration_hours'] > 0
+        assert data['journey']['estimated'] is True
+        assert data['journey']['distance_km'] > 0
         assert data['tides']['station'] == 'Southampton'
+
+    def test_journey_plan_with_waypoints(self, client):
+        payload = {
+            "start_location": {"lat": 50.899, "lon": -1.385},
+            "end_location": {"lat": 50.810, "lon": -1.305},
+            "start_time": "2026-06-15T08:00:00",
+            "waypoints": [{"lat": 50.85, "lon": -1.35}],
+        }
+        response = client.post(
+            '/api/journey-plan',
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['journey']['distance_km'] > 0
 
     def test_journey_plan_with_manual_spring_percentage(self, client):
         payload = {
             "start_location": {"lat": 50.899, "lon": -1.385},
             "end_location": {"lat": 50.810, "lon": -1.305},
             "start_time": "2026-06-15T08:00:00",
-            "duration_hours": 3,
             "spring_percentage": 75
         }
         response = client.post(

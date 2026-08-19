@@ -3,15 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kayak Journey Planner</title>
+    <title>Aegir v{{ version }}</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <div class="app-container">
         <header class="app-header">
-            <h1>Kayak Journey Planner</h1>
-            <p>Plan your trips with tide and weather information</p>
+            <div class="header-row">
+                <div>
+                    <h1>Aegir <span class="version">v{{ version }}</span></h1>
+                    <p>Kayak Journey Planner &mdash; tides, weather &amp; routing</p>
+                </div>
+                <a href="https://github.com/VRConservation/aegir" target="_blank" rel="noopener" class="github-link" title="View on GitHub">
+                    <svg viewBox="0 0 16 16" width="28" height="28" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+                </a>
+            </div>
         </header>
 
         <!-- Step indicators -->
@@ -50,11 +57,6 @@
                         <label for="journey-time">Departure Time</label>
                         <input type="time" id="journey-time" value="08:00">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label for="journey-duration">Estimated Duration (hours)</label>
-                    <input type="range" id="journey-duration" min="0.5" max="12" step="0.5" value="3">
-                    <div class="range-value"><span id="duration-display">3</span> hours</div>
                 </div>
                 <div class="form-group">
                     <label for="spring-percentage">Spring/Neap Override (optional)</label>
@@ -147,19 +149,34 @@
 
         <!-- Step 4: Map -->
         <div class="wizard-panel" id="step-4">
-            <div class="panel-content-full">
-                <div class="map-header">
+            <div class="map-layout">
+                <!-- Conditions sidebar -->
+                <div class="map-sidebar" id="map-sidebar">
                     <h2>Your Journey</h2>
+
                     <div class="map-legend">
                         <span class="legend-item"><span class="legend-dot start"></span> Start</span>
+                        <span class="legend-item"><span class="legend-dot waypoint"></span> Waypoint</span>
                         <span class="legend-item"><span class="legend-dot end"></span> End</span>
                     </div>
+
+                    <div id="map-weather-summary" class="map-summary-card"></div>
+                    <div id="map-tide-summary" class="map-summary-card"></div>
+                    <div id="map-route-summary" class="map-summary-card"></div>
+                    <div id="map-tide-advice" class="map-summary-card advice-card"></div>
+
+                    <div class="waypoint-hint">
+                        <small>Click the map to add intermediate waypoints. Right-click a waypoint to remove it.</small>
+                    </div>
+
+                    <div class="wizard-nav">
+                        <button class="btn-secondary" onclick="goToStep(3)">Back</button>
+                        <button class="btn-primary" onclick="goToStep(1)">Start Over</button>
+                    </div>
                 </div>
+
+                <!-- Map -->
                 <div id="main-map" class="full-map"></div>
-            </div>
-            <div class="wizard-nav map-nav">
-                <button class="btn-secondary" onclick="goToStep(3)">Back</button>
-                <button class="btn-primary" onclick="goToStep(1)">Start Over</button>
             </div>
         </div>
     </div>

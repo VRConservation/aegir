@@ -1,207 +1,54 @@
-# Kayak Journey Planner
+# Aegir
 
-A web application for planning kayak journeys with real-time tide information, interactive maps, and launch spot database.
+Kayak Journey Planner — tide predictions, weather forecasts and route planning.
 
 ## Features
 
-- 🗺️ **Interactive Map**: Leaflet.js-based map with click-to-select start/end locations
-- 📍 **Launch Spots Database**: Pre-loaded launch spots with facilities information
-- 🌊 **Tide Predictions**: Calculate tide heights and flow rates for your journey
-- 📊 **Tide Charts**: Visualize tide patterns during your trip
-- 🌙 **Spring/Neap Calculator**: Shows percentage of spring tides
-- 📱 **Geolocation**: Use your current location as starting point
-- 📏 **Distance Calculator**: Automatic distance calculation in km and nautical miles
+- **Wizard flow**: Step-by-step journey planning (When → Where → Conditions → Map)
+- **Location search**: Search any UK location via Nominatim (OpenStreetMap)
+- **Weather forecasts**: Real-time data from Open-Meteo API (free, no key required)
+- **Tide predictions**: Simplified harmonic model with spring/neap calculation
+- **Estimated duration**: Calculated from distance, paddling speed and tidal flow
+- **Interactive map**: Leaflet.js with click-to-add waypoints and route drawing
+- **GO / CAUTION / NO GO**: Traffic-light conditions assessment
+
+## Quick Start
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Open http://localhost:5080
 
 ## Tech Stack
 
-- **Backend**: Python Flask
-- **Frontend**: HTML, CSS, JavaScript
-- **Maps**: Leaflet.js
-- **Charts**: Chart.js
-- **Styling**: Custom CSS with responsive design
+- **Backend**: Flask (Python)
+- **Frontend**: Vanilla JS, Leaflet.js, Chart.js
+- **Data**: Open-Meteo (weather), Nominatim (geocoding), simplified harmonic tides
+- **Versioning**: bump2version
 
-## Installation
+## Versioning
 
-1. **Install Python dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+bump2version patch   # 0.0.1 → 0.0.2
+bump2version minor   # 0.0.2 → 0.1.0
+bump2version major   # 0.1.0 → 1.0.0
+```
 
-2. **Run the application:**
-   ```bash
-   python app.py
-   ```
-
-3. **Open in browser:**
-   Navigate to `http://localhost:5000`
-
-## Usage
-
-1. **Set Start Location:**
-   - Click on the map, or
-   - Use "📍 Use My Location" button, or
-   - Click a launch spot and select "Set as Start"
-
-2. **Set End Location:**
-   - Click on the map again, or
-   - Click a launch spot and select "Set as End"
-
-3. **Configure Journey:**
-   - Set departure time
-   - Set expected duration
-
-4. **Calculate:**
-   - Click "Calculate Journey"
-   - View results in the sidebar including:
-     - Distance and duration
-     - Tide heights at start/end
-     - Flow rate and direction
-     - Spring/neap percentage
-
-## Current Limitations & Future Enhancements
-
-### Current Implementation
-This is a **prototype** using simplified tide calculations. The tide data is generated using a basic harmonic model and should not be used for real navigation.
-
-### Planned Enhancements
-
-1. **Real Tide Data Integration:**
-   - Integrate with Admiralty EasyTide API (UK)
-   - WorldTides API for global coverage
-   - NOAA API for US waters
-
-2. **Enhanced Features:**
-   - Save favorite routes
-   - Weather integration
-   - Current/flow visualization with arrows
-   - Restricted areas and hazards
-   - Route optimization based on tides
-
-3. **Database:**
-   - PostgreSQL with PostGIS for spatial queries
-   - More comprehensive launch spots database
-   - User accounts and saved journeys
-
-4. **Mobile App:**
-   - Progressive Web App (PWA) support
-   - Offline maps
-   - GPS tracking during journey
+The version is displayed in the app title and included in git tags.
 
 ## API Endpoints
 
-### `GET /`
-Returns the main application page
-
-### `GET /api/launch-spots`
-Returns all launch spots with their locations and facilities
-
-### `GET /api/tide-stations`
-Returns available tide stations
-
-### `POST /api/tides`
-Calculate tide predictions for a location and time period
-
-**Request body:**
-```json
-{
-  "station": "Southampton",
-  "start_time": "2026-06-03T08:00:00",
-  "duration_hours": 4
-}
-```
-
-### `POST /api/journey-plan`
-Plan a complete journey with tide information
-
-**Request body:**
-```json
-{
-  "start_location": {"lat": 50.899, "lon": -1.385},
-  "end_location": {"lat": 50.810, "lon": -1.305},
-  "start_time": "2026-06-03T08:00:00",
-  "duration_hours": 3
-}
-```
-
-## Project Structure
-
-```
-kajak-journeys/
-├── app.py                 # Flask backend with API endpoints
-├── requirements.txt       # Python dependencies
-├── templates/
-│   └── index.html        # Main HTML template
-├── static/
-│   ├── style.css         # Custom styling
-│   └── app.js            # Frontend JavaScript
-└── README.md             # This file
-```
-
-## Development
-
-### Adding Launch Spots
-Edit the `LAUNCH_SPOTS` array in `app.py`:
-
-```python
-LAUNCH_SPOTS = [
-    {
-        "id": 1,
-        "name": "Your Spot Name",
-        "lat": 50.123,
-        "lon": -1.456,
-        "description": "Description",
-        "facilities": ["parking", "toilets"],
-        "tide_station": "Nearest Station"
-    }
-]
-```
-
-### Integrating Real Tide API
-
-To replace the simplified tide calculations with real data:
-
-1. Sign up for a tide data API (e.g., Admiralty EasyTide, WorldTides)
-2. Modify the `get_tides()` function in `app.py`
-3. Replace the harmonic calculations with API calls
-
-Example structure:
-```python
-@app.route('/api/tides', methods=['POST'])
-def get_tides():
-    data = request.json
-    # Call external tide API
-    response = requests.get(
-        f'https://api.tidesapi.com/...',
-        params={'station': data['station'], 'date': data['start_time']}
-    )
-    return jsonify(response.json())
-```
-
-## Contributing
-
-This is a prototype project. Feel free to:
-- Add more launch spots
-- Improve tide calculations
-- Add weather integration
-- Enhance the UI/UX
-- Add more features
-
-## License
-
-Open source - use and modify as needed.
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | `/` | Main app |
+| POST | `/api/geocode` | Search locations (Nominatim) |
+| GET | `/api/tide-stations` | List tide stations |
+| POST | `/api/weather` | Weather forecast (Open-Meteo) |
+| POST | `/api/tides` | Tide predictions |
+| POST | `/api/journey-plan` | Full journey plan with estimated duration |
 
 ## Safety Notice
 
-⚠️ **IMPORTANT**: This is a planning tool only. Always:
-- Check official tide tables before any kayak journey
-- Assess weather conditions
-- Have proper safety equipment
-- Know your abilities and limitations
-- File a float plan with someone onshore
-- Never kayak alone in challenging conditions
-
-## Credits
-
-- Map tiles: OpenStreetMap contributors
-- Icons: Leaflet Color Markers
-- Tide calculations: Simplified harmonic model (replace with real API for production)
+**This is a planning tool only.** Always check official tide tables and weather forecasts before any kayak journey. Never kayak alone in challenging conditions.

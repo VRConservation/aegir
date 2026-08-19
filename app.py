@@ -1,6 +1,8 @@
 """
-Kayak Journey Planner - Flask Backend
+Aegir - Kayak Journey Planner
 """
+__version__ = '0.0.1'
+
 from flask import Flask, jsonify, request, render_template
 from datetime import datetime, timedelta
 import math
@@ -8,7 +10,6 @@ import requests
 
 app = Flask(__name__)
 
-# Tide stations
 TIDE_STATIONS = {
     "Southampton": {
         "lat": 50.9025, "lon": -1.4042,
@@ -20,6 +21,8 @@ TIDE_STATIONS = {
     }
 }
 
+KAYAK_BASE_SPEED_KMH = 6.0
+
 
 def calculate_tide_height(time, reference_time, high_tide, low_tide, period=12.42):
     """Calculate tide height using simplified harmonic method."""
@@ -30,35 +33,34 @@ def calculate_tide_height(time, reference_time, high_tide, low_tide, period=12.4
     return round(height, 2)
 
 
+def _julian_day(year, month, day):
+    """Calculate Julian Day number from calendar date."""
+    if month <= 2:
+        year -= 1
+        month += 12
+    A = int(year / 100)
+    B = 2 - A + int(A / 4)
+    return int(365.25 * (year + 4716)) + int(30.6001 * (month + 1)) + day + B - 1524.5
+
+
 def calculate_spring_neap_percentage(date):
-    """Calculate spring/neap percentage based on lunar cycle."""
+    """
+    Calculate spring/neap percentage based on lunar phase.
+    100% = springs (new/full moon), 0% = neaps (quarter moon).
+    """
     if not isinstance(date, datetime):
         try:
             date = datetime.fromisoformat(str(date))
         except Exception:
             date = datetime.now()
 
-    new_moon = datetime(2026, 5, 31)
-    days_since_new = (date - new_moon).days % 29.53
-    lunar_day = days_since_new
+    jd = _julian_day(date.year, date.month, date.day)
+    known_new_moon_jd = 2451551.26
+    synodic_month = 29.53058867
 
-    if lunar_day <= 3:
-        percentage = 100 - (lunar_day / 7.38) * 40
-    elif lunar_day <= 7.38:
-        percentage = 60 - ((lunar_day - 3) / 4.38) * 60
-    elif lunar_day <= 11:
-        percentage = 0 + ((lunar_day - 7.38) / 3.62) * 40
-    elif lunar_day <= 14.76:
-        percentage = 40 + ((lunar_day - 11) / 3.76) * 60
-    elif lunar_day <= 18:
-        percentage = 100 - ((lunar_day - 14.76) / 3.24) * 40
-    elif lunar_day <= 22.15:
-        percentage = 60 - ((lunar_day - 18) / 4.15) * 60
-    elif lunar_day <= 26:
-        percentage = 0 + ((lunar_day - 22.15) / 3.85) * 40
-    else:
-        percentage = 40 + ((lunar_day - 26) / 3.53) * 60
-
+    days_since = jd - known_new_moon_jd
+    phase = (days_since % synodic_month) / synodic_month
+    percentage = 100 * math.cos(2 * math.pi * phase) ** 2
     return round(max(0, min(100, percentage)), 1)
 
 
@@ -71,13 +73,9 @@ def fetch_weather(lat, lon, start_date, end_date):
                 'latitude': lat,
                 'longitude': lon,
                 'hourly': ','.join([
-                    'temperature_2m',
-                    'windspeed_10m',
-                    'winddirection_10m',
-                    'precipitation_probability',
-                    'precipitation',
-                    'weathercode',
-                    'visibility',
+                    'temperature_2m', 'windspeed_10m', 'winddirection_10m',
+                    'precipitation_probability', 'precipitation',
+                    'weathercode', 'visibility',
                 ]),
                 'start_date': start_date,
                 'end_date': end_date,
@@ -87,12 +85,9 @@ def fetch_weather(lat, lon, start_date, end_date):
         )
         resp.raise_for_status()
         data = resp.json()
-
         hourly = data.get('hourly', {})
-        times = hourly.get('time', [])
-
         return {
-            'times': times,
+            'times': hourly.get('time', []),
             'temperature': hourly.get('temperature_2m', []),
             'wind_speed': hourly.get('windspeed_10m', []),
             'wind_direction': hourly.get('winddirection_10m', []),
@@ -115,8 +110,7 @@ def weather_code_description(code):
         56: 'Freezing drizzle', 57: 'Dense freezing drizzle',
         61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
         66: 'Freezing rain', 67: 'Heavy freezing rain',
-        71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow',
-        77: 'Snow grains',
+        71: 'Slight snow', 73: 'Moderate snow', 75: 'Heavy snow', 77: 'Snow grains',
         80: 'Slight rain showers', 81: 'Moderate rain showers', 82: 'Violent rain showers',
         85: 'Slight snow showers', 86: 'Heavy snow showers',
         95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with heavy hail',
@@ -130,38 +124,72 @@ def wind_direction_name(degrees):
         return 'N/A'
     dirs = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE',
             'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW']
-    idx = round(degrees / 22.5) % 16
-    return dirs[idx]
+    return dirs[round(degrees / 22.5) % 16]
+
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    """Calculate distance between two points in km."""
+    r1, o1 = math.radians(lat1), math.radians(lon1)
+    r2, o2 = math.radians(lat2), math.radians(lon2)
+    dlat, dlon = r2 - r1, o2 - o1
+    a = math.sin(dlat / 2) ** 2 + math.cos(r1) * math.cos(r2) * math.sin(dlon / 2) ** 2
+    return 6371 * 2 * math.asin(math.sqrt(a))
+
+
+def calculate_tide_params(start_time, duration_hours, spring_percentage):
+    """Calculate tide heights, direction and flow rate for a given duration."""
+    spring_factor = spring_percentage / 100
+    high_tide = 4.5 + (1.0 * spring_factor)
+    low_tide = 1.0 - (0.5 * spring_factor)
+    reference_time = start_time.replace(hour=6, minute=0, second=0)
+    end_time = start_time + timedelta(hours=duration_hours)
+    start_height = calculate_tide_height(start_time, reference_time, high_tide, low_tide)
+    end_height = calculate_tide_height(end_time, reference_time, high_tide, low_tide)
+    tide_direction = "rising" if end_height > start_height else "falling"
+    flow_rate = abs(end_height - start_height) / duration_hours
+    return start_height, end_height, tide_direction, flow_rate
+
+
+def estimate_duration(distance_km, start_time, spring_percentage):
+    """
+    Estimate journey duration based on distance, paddling speed and tidal flow.
+    Iterative: guess duration, compute tides, adjust speed, repeat.
+    """
+    duration = distance_km / KAYAK_BASE_SPEED_KMH
+
+    for _ in range(2):
+        start_h, end_h, tide_dir, flow_rate = calculate_tide_params(
+            start_time, duration, spring_percentage
+        )
+        current_kmh = flow_rate * 0.8
+        if tide_dir == "rising":
+            effective_speed = KAYAK_BASE_SPEED_KMH + current_kmh * 0.5
+        else:
+            effective_speed = max(KAYAK_BASE_SPEED_KMH - current_kmh * 0.5, 2.0)
+        duration = distance_km / effective_speed
+
+    return round(duration, 1)
 
 
 # --- Routes ---
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', version=__version__)
 
 
 @app.route('/api/geocode', methods=['POST'])
 def geocode():
-    """
-    Search for a location using Nominatim (OpenStreetMap).
-    Expects JSON: {"query": "Southampton, UK"}
-    """
+    """Search for a location using Nominatim (OpenStreetMap)."""
     data = request.json
     query = data.get('query', '').strip()
     if not query:
         return jsonify({'error': 'query is required'}), 400
-
     try:
         resp = requests.get(
             'https://nominatim.openstreetmap.org/search',
-            params={
-                'q': query,
-                'format': 'json',
-                'limit': 8,
-                'countrycodes': 'gb',
-            },
-            headers={'User-Agent': 'KayakJourneyPlanner/1.0'},
+            params={'q': query, 'format': 'json', 'limit': 8, 'countrycodes': 'gb'},
+            headers={'User-Agent': f'Aegir/{__version__}'},
             timeout=10,
         )
         resp.raise_for_status()
@@ -184,54 +212,29 @@ def get_tide_stations():
 
 @app.route('/api/weather', methods=['POST'])
 def get_weather():
-    """
-    Fetch weather for a location and date range.
-    Expects JSON: {
-        "lat": 50.899,
-        "lon": -1.385,
-        "start_date": "2026-06-03",
-        "end_date": "2026-06-03"
-    }
-    """
+    """Fetch weather for a location and date range."""
     data = request.json
     lat = data.get('lat', 50.9)
     lon = data.get('lon', -1.4)
     start_date = data.get('start_date')
     end_date = data.get('end_date', start_date)
-
     if not start_date:
         return jsonify({'error': 'start_date is required'}), 400
-
     weather = fetch_weather(lat, lon, start_date, end_date)
     if weather is None:
         return jsonify({'error': 'Failed to fetch weather data'}), 502
-
-    # Add descriptions
-    weather['weather_descriptions'] = [
-        weather_code_description(c) for c in weather['weather_code']
-    ]
-    weather['wind_direction_names'] = [
-        wind_direction_name(d) for d in weather['wind_direction']
-    ]
-
+    weather['weather_descriptions'] = [weather_code_description(c) for c in weather['weather_code']]
+    weather['wind_direction_names'] = [wind_direction_name(d) for d in weather['wind_direction']]
     return jsonify(weather)
 
 
 @app.route('/api/tides', methods=['POST'])
 def get_tides():
-    """
-    Calculate tide predictions for a given location and time period.
-    Expects JSON: {
-        "station": "Southampton",
-        "start_time": "2026-06-03T08:00:00",
-        "duration_hours": 4
-    }
-    """
+    """Calculate tide predictions for a given location and time period."""
     data = request.json
     station = data.get('station', 'Southampton')
     start_time_str = data.get('start_time')
     duration_hours = data.get('duration_hours', 4)
-
     if not start_time_str:
         return jsonify({'error': 'start_time is required'}), 400
 
@@ -246,14 +249,10 @@ def get_tides():
     low_tide = 1.0 - (0.5 * spring_factor)
 
     tide_data = []
-    for i in range(duration_hours + 1):
+    for i in range(int(duration_hours) + 1):
         t = start_time + timedelta(hours=i)
         height = calculate_tide_height(t, reference_time, high_tide, low_tide)
-        tide_data.append({
-            "time": t.isoformat(),
-            "height": height,
-            "station": station,
-        })
+        tide_data.append({"time": t.isoformat(), "height": height, "station": station})
 
     return jsonify({
         "tides": tide_data,
@@ -268,11 +267,12 @@ def get_tides():
 def plan_journey():
     """
     Plan a journey with tide and weather information.
+    Duration is estimated from distance, paddling speed and tidal flow.
     Expects JSON: {
         "start_location": {"lat": 50.899, "lon": -1.385},
         "end_location": {"lat": 50.810, "lon": -1.305},
         "start_time": "2026-06-03T08:00:00",
-        "duration_hours": 3
+        "waypoints": [{"lat": 50.85, "lon": -1.35}, ...]
     }
     """
     try:
@@ -280,25 +280,22 @@ def plan_journey():
         start_loc = data.get('start_location')
         end_loc = data.get('end_location')
         start_time_str = data.get('start_time')
-        duration_hours = data.get('duration_hours', 3)
+        waypoints = data.get('waypoints', [])
         manual_spring_percentage = data.get('spring_percentage')
 
         if not start_loc or not end_loc or not start_time_str:
             return jsonify({'error': 'start_location, end_location, and start_time are required'}), 400
 
         start_time = datetime.fromisoformat(start_time_str)
-        end_time = start_time + timedelta(hours=duration_hours)
 
-        station = "Southampton"
-
-        # Calculate distance (Haversine)
-        lat1, lon1 = math.radians(start_loc['lat']), math.radians(start_loc['lon'])
-        lat2, lon2 = math.radians(end_loc['lat']), math.radians(end_loc['lon'])
-        dlat = lat2 - lat1
-        dlon = lon2 - lon1
-        a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
-        c = 2 * math.asin(math.sqrt(a))
-        distance_km = 6371 * c
+        # Calculate distance along waypoints
+        all_points = [start_loc] + waypoints + [end_loc]
+        distance_km = 0
+        for i in range(len(all_points) - 1):
+            distance_km += haversine_km(
+                all_points[i]['lat'], all_points[i]['lon'],
+                all_points[i + 1]['lat'], all_points[i + 1]['lon'],
+            )
         distance_nm = distance_km * 0.539957
 
         # Spring/neap
@@ -313,18 +310,16 @@ def plan_journey():
             spring_percentage = 50.0
             spring_source = "default"
 
-        spring_factor = spring_percentage / 100
-        high_tide = 4.5 + (1.0 * spring_factor)
-        low_tide = 1.0 - (0.5 * spring_factor)
+        # Estimate duration
+        duration_hours = estimate_duration(distance_km, start_time, spring_percentage)
+        end_time = start_time + timedelta(hours=duration_hours)
 
-        reference_time = start_time.replace(hour=6, minute=0, second=0)
-        start_tide_height = calculate_tide_height(start_time, reference_time, high_tide, low_tide)
-        end_tide_height = calculate_tide_height(end_time, reference_time, high_tide, low_tide)
+        # Calculate tides
+        start_height, end_height, tide_direction, flow_rate = calculate_tide_params(
+            start_time, duration_hours, spring_percentage
+        )
 
-        tide_direction = "rising" if end_tide_height > start_tide_height else "falling"
-        flow_rate = abs(end_tide_height - start_tide_height) / duration_hours
-
-        # Fetch weather for the journey period
+        # Fetch weather
         mid_lat = (start_loc['lat'] + end_loc['lat']) / 2
         mid_lon = (start_loc['lon'] + end_loc['lon']) / 2
         weather = fetch_weather(
@@ -333,7 +328,6 @@ def plan_journey():
             end_time.strftime('%Y-%m-%d'),
         )
 
-        # Extract weather summary for the start hour
         weather_summary = None
         if weather and weather['times']:
             start_hour = start_time.hour
@@ -358,11 +352,12 @@ def plan_journey():
                 "duration_hours": duration_hours,
                 "distance_km": round(distance_km, 2),
                 "distance_nm": round(distance_nm, 2),
+                "estimated": True,
             },
             "tides": {
-                "station": station,
-                "start_height": start_tide_height,
-                "end_height": end_tide_height,
+                "station": "Southampton",
+                "start_height": start_height,
+                "end_height": end_height,
                 "tide_direction": tide_direction,
                 "flow_rate": round(flow_rate, 2),
                 "spring_percentage": spring_percentage,
@@ -378,7 +373,7 @@ def plan_journey():
 
 if __name__ == '__main__':
     print()
-    print("  🛶 Kayak Journey Planner")
+    print(f"  🛶 Aegir v{__version__}")
     print("  ───────────────────────")
     print("  🚀 Running at http://localhost:5080")
     print("  📍 Press Ctrl+C to stop")
