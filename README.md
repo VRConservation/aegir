@@ -11,6 +11,7 @@ Kayak Journey Planner — tide predictions, weather forecasts and route planning
 - **Estimated duration**: Calculated from distance, paddling speed and tidal flow
 - **Interactive map**: Leaflet.js with click-to-add waypoints and route drawing
 - **TRIP NOTE / CAUTION / NO GO**: Traffic-light conditions assessment
+- **Export**: Export to a forum ready post or pdf with map
 
 ## Quick Start
 
@@ -27,9 +28,6 @@ Open http://localhost:5080
 - **Frontend**: Vanilla JS, Leaflet.js, Chart.js
 - **Data**: Open-Meteo (weather), Nominatim (geocoding), simplified harmonic tides
 - **Versioning**: bump2version
-
-
-The version is displayed in the app title and included in git tags.
 
 ## API Endpoints
 
