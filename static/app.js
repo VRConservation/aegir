@@ -395,7 +395,7 @@ function initMainMap() {
         return;
     }
 
-    mainMap = L.map('main-map').setView([50.85, -1.35], 11);
+    mainMap = L.map('main-map', { preferCanvas: true }).setView([50.85, -1.35], 11);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap', maxZoom: 18
     }).addTo(mainMap);
@@ -686,7 +686,9 @@ My contact: 07725 467072
 
 function exportPDF() {
     const d = tripData();
-    const html = `<!DOCTYPE html>
+
+    function buildHTML(mapDataUrl) {
+        return `<!DOCTYPE html>
 <html><head><title>Trip ${d.dateStr}</title>
 <style>
   body { font-family: sans-serif; max-width: 700px; margin: 2rem auto; color: #111; line-height: 1.5; }
@@ -703,7 +705,7 @@ function exportPDF() {
 <p>${d.dateStr}</p>
 
 <h2>Route Map</h2>
-<img class="map-img" id="map-screenshot" src="" alt="Route map">
+<img class="map-img" src="${mapDataUrl}" alt="Route map">
 
 <h2>Plan</h2>
 <table>
@@ -737,19 +739,29 @@ function exportPDF() {
 
 <p class="disclaimer">By signing up for this trip here, you should have read, understood and consented to the club trip check list and risk assessment. Happy to have a chat if you have any queries.</p>
 </body></html>`;
+    }
 
-    const win = window.open('', '_blank');
-    win.document.write(html);
-    win.document.close();
-
-    const script = win.document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-    script.onload = function () {
-        const mapEl = mainMap.getContainer();
-        win.html2canvas(mapEl, { useCORS: true }).then(canvas => {
-            win.document.getElementById('map-screenshot').src = canvas.toDataURL('image/png');
-            win.print();
+    function loadHtml2canvas() {
+        return new Promise((resolve, reject) => {
+            if (window.html2canvas) { resolve(window.html2canvas); return; }
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            s.onload = () => resolve(window.html2canvas);
+            s.onerror = reject;
+            document.head.appendChild(s);
         });
-    };
-    win.document.head.appendChild(script);
+    }
+
+    loadHtml2canvas().then(h2c => {
+        mainMap.invalidateSize();
+        setTimeout(() => {
+            h2c(mainMap.getContainer(), { useCORS: true, scale: 2 }).then(canvas => {
+                const dataUrl = canvas.toDataURL('image/png');
+                const win = window.open('', '_blank');
+                win.document.write(buildHTML(dataUrl));
+                win.document.close();
+                win.print();
+            });
+        }, 300);
+    });
 }

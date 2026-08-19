@@ -173,6 +173,11 @@ def estimate_duration(distance_km, start_time, spring_percentage):
 
 # --- Routes ---
 
+@app.route('/health')
+def health():
+    return jsonify({"status": "healthy", "version": __version__})
+
+
 @app.route('/')
 def index():
     return render_template('index.html', version=__version__)
@@ -375,7 +380,7 @@ if __name__ == '__main__':
     print()
     print(f"  🛶 Aegir v{__version__}")
     print("  ───────────────────────")
-    print("  🚀 Running at \033[92mhttp://localhost:5080\033[0m")
+    print("  🚀 Running at \033[92mhttp://localhost:8081\033[0m")
     print("  📍 Press Ctrl+C to stop")
     print()
-    app.run(debug=True, host='0.0.0.0', port=5080)
+    app.run(debug=True, host='0.0.0.0', port=8081)

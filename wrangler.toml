@@ -1,0 +1,16 @@
+name = "aegir"
+main = "src/index.ts"
+compatibility_date = "2025-10-01"
+
+[[containers]]
+class_name = "AegirContainer"
+image = "./Dockerfile"
+max_instances = 1
+
+[[durable_objects.bindings]]
+class_name = "AegirContainer"
+name = "AEGIR_CONTAINER"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["AegirContainer"]
