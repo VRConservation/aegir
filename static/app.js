@@ -149,7 +149,6 @@ function selectLocation(which, lat, lon, name) {
         const m = L.marker([lat, lon], { icon }).addTo(pickerMap);
         if (which === 'start') pickerStartMarker = m;
         else pickerEndMarker = m;
-        pickerMap.setView([lat, lon], 13);
     }
 }
 
@@ -559,12 +558,18 @@ function renderMapSummary() {
     const routeNm = (routeDist * 0.539957).toFixed(1);
     const routeEl = document.getElementById('map-route-summary');
     const wpCount = state.waypoints.length;
+    const kayakSpeed = 6.0;
+    const currentKmh = t.flow_rate * 0.8;
+    const effectiveSpeed = t.tide_direction === 'rising'
+        ? kayakSpeed + currentKmh * 0.5
+        : Math.max(kayakSpeed - currentKmh * 0.5, 2.0);
+    const estDuration = routeDist / effectiveSpeed;
     routeEl.innerHTML = `
         <h4>Route</h4>
         <div class="map-summary-row"><span>Distance</span><span>${routeDist.toFixed(1)} km (${routeNm} nm)</span></div>
-        <div class="map-summary-row"><span>Est. duration</span><span>${j.duration_hours} hrs</span></div>
+        <div class="map-summary-row"><span>Est. duration</span><span>${estDuration.toFixed(1)} hrs</span></div>
         <div class="map-summary-row"><span>Waypoints</span><span>${wpCount}</span></div>
-        <div class="map-summary-row"><span>Avg speed</span><span>${(routeDist / j.duration_hours).toFixed(1)} km/h</span></div>
+        <div class="map-summary-row"><span>Avg speed</span><span>${effectiveSpeed.toFixed(1)} km/h</span></div>
     `;
 
     // Tide advice

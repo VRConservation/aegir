@@ -375,7 +375,7 @@ if __name__ == '__main__':
     print()
     print(f"  🛶 Aegir v{__version__}")
     print("  ───────────────────────")
-    print("  🚀 Running at http://localhost:5080")
+    print("  🚀 Running at \033[92mhttp://localhost:5080\033[0m")
     print("  📍 Press Ctrl+C to stop")
     print()
     app.run(debug=True, host='0.0.0.0', port=5080)
