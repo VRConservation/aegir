@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function () {
         step.style.cursor = 'pointer';
         step.addEventListener('click', function () {
             const n = parseInt(this.dataset.step);
-            if (n < state.step) goToStep(n);
+            goToStep(n);
         });
     });
 });
@@ -56,6 +56,12 @@ function goToStep(n) {
         alert('Please set both start and end locations');
         return;
     }
+    if (n === 4 && !state.journeyData) {
+        alert('Please fetch conditions first');
+        return;
+    }
+
+    if (state.step === 4 && n < 4) resetMainMap();
 
     document.querySelectorAll('.wizard-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
@@ -354,6 +360,17 @@ async function fetchTideChart() {
     }
 }
 
+function resetMainMap() {
+    if (mainMap) {
+        mainMap.remove();
+        mainMap = null;
+    }
+    mainStartMarker = null;
+    mainEndMarker = null;
+    mainRouteLine = null;
+    state.waypoints = [];
+}
+
 // --- Main Map (Step 4) ---
 const mainStartIcon = L.icon({
     iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
@@ -390,12 +407,27 @@ function initMainMap() {
     });
 
     // Add start/end markers
-    mainStartMarker = L.marker([state.start.lat, state.start.lon], { icon: mainStartIcon })
+    mainStartMarker = L.marker([state.start.lat, state.start.lon], { icon: mainStartIcon, draggable: true })
         .addTo(mainMap)
         .bindPopup(`<b>Start:</b> ${state.start.name}`);
-    mainEndMarker = L.marker([state.end.lat, state.end.lon], { icon: mainEndIcon })
+    mainStartMarker.on('dragend', function (e) {
+        const pos = e.target.getLatLng();
+        state.start.lat = pos.lat;
+        state.start.lon = pos.lng;
+        drawRoute();
+        renderMapSummary();
+    });
+
+    mainEndMarker = L.marker([state.end.lat, state.end.lon], { icon: mainEndIcon, draggable: true })
         .addTo(mainMap)
         .bindPopup(`<b>End:</b> ${state.end.name}`);
+    mainEndMarker.on('dragend', function (e) {
+        const pos = e.target.getLatLng();
+        state.end.lat = pos.lat;
+        state.end.lon = pos.lng;
+        drawRoute();
+        renderMapSummary();
+    });
 
     drawRoute();
     fitMapBounds();
@@ -405,12 +437,20 @@ function initMainMap() {
 }
 
 function addWaypoint(lat, lon) {
-    const marker = L.marker([lat, lon], { icon: waypointIcon })
+    const marker = L.marker([lat, lon], { icon: waypointIcon, draggable: true })
         .addTo(mainMap)
-        .bindPopup(`Waypoint<br><small>Right-click to remove</small>`);
+        .bindPopup(`Waypoint<br><small>Drag to move &middot; Right-click to remove</small>`);
 
     marker.on('contextmenu', function () {
         removeWaypoint(marker);
+    });
+
+    marker.on('dragend', function (e) {
+        const pos = e.target.getLatLng();
+        const wp = state.waypoints.find(w => w.marker === marker);
+        if (wp) { wp.lat = pos.lat; wp.lon = pos.lng; }
+        drawRoute();
+        renderMapSummary();
     });
 
     state.waypoints.push({ lat, lon, marker });

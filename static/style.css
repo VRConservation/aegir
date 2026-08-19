@@ -458,6 +458,8 @@ input[type="range"] {
 .advice-card.danger { border-left-color: var(--danger); }
 .advice-card h4 { margin-bottom: 0.25rem; }
 .advice-text { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+.waypoint-hint { text-align: center; padding: 0.5rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem; }
+.waypoint-hint small { color: var(--text-muted); }
 .full-map {
     flex: 1;
     min-height: 0;
