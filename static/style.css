@@ -368,14 +368,14 @@ input[type="range"] {
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1.25rem;
-    height: 180px;
+    height: 220px;
 }
 .chart-container h3 {
     font-size: 0.9rem;
     margin-bottom: 0.75rem;
 }
 .chart-container canvas {
-    max-height: 130px;
+    max-height: 170px;
 }
 
 /* Full map (step 4) */
@@ -450,6 +450,10 @@ input[type="range"] {
     display: flex;
     justify-content: space-between;
     padding: 0.2rem 0;
+}
+.map-summary-row span:last-child {
+    text-align: right;
+    font-weight: 500;
 }
 .advice-card {
     border-left: 3px solid var(--success);

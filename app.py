@@ -282,11 +282,10 @@ def plan_journey():
         tide_range = tide_info.get("tide_range", 0.0)
         spring_label, spring_pct = estimate_spring_neap(tide_range)
 
-        # Fetch weather
-        mid_lat = (start_loc['lat'] + end_loc['lat']) / 2
-        mid_lon = (start_loc['lon'] + end_loc['lon']) / 2
+        # Fetch weather for Portsmouth tide station
+        portsmouth = TIDE_STATIONS["Portsmouth"]
         weather = fetch_weather(
-            mid_lat, mid_lon,
+            portsmouth['lat'], portsmouth['lon'],
             start_time.strftime('%Y-%m-%d'),
             end_time.strftime('%Y-%m-%d'),
         )
@@ -300,10 +299,11 @@ def plan_journey():
                     wind_dir_raw = weather['wind_direction'][i] if i < len(weather['wind_direction']) else None
                     wc = weather['weather_code'][i] if i < len(weather['weather_code']) else None
                     weather_summary = {
-                        'temperature': weather['temperature'][i] if i < len(weather['temperature']) else None,
+                        'temperature': round(weather['temperature'][i]) if i < len(weather['temperature']) and weather['temperature'][i] is not None else None,
                         'wind_speed': weather['wind_speed'][i] if i < len(weather['wind_speed']) else None,
                         'wind_direction': wind_direction_name(wind_dir_raw),
-                        'precipitation_probability': weather['precipitation_probability'][i] if i < len(weather['precipitation_probability']) else None,
+                        'precipitation_probability': round(weather['precipitation_probability'][i]) if i < len(weather['precipitation_probability']) and weather['precipitation_probability'][i] is not None else None,
+                        'precipitation': round(weather['precipitation'][i]) if i < len(weather['precipitation']) and weather['precipitation'][i] is not None else None,
                         'weather_description': weather_code_description(wc) if wc is not None else None,
                     }
                     break

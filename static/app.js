@@ -230,18 +230,24 @@ function renderConditions(data) {
     const t = data.tides;
     const w = data.weather;
 
+    // Update trip conditions title with date
+    const dateParts = state.date.split('-');
+    const dateFormatted = `${dateParts[2]}-${dateParts[1]}-${dateParts[0].slice(2)}`;
+    const conditionsTitle = document.querySelector('#step-3 h2');
+    if (conditionsTitle) conditionsTitle.textContent = `Trip Conditions (${dateFormatted})`;
+
     const weatherEl = document.getElementById('weather-info');
     if (w) {
         const precip = w.precipitation_probability != null ? w.precipitation_probability : '-';
-        const wind = w.wind_speed != null ? `${w.wind_speed} km/h` : '-';
         const windDir = w.wind_direction || '-';
+        const wind = w.wind_speed != null ? `${w.wind_speed} km/h` : '-';
         const temp = w.temperature != null ? `${w.temperature}` : '-';
         const desc = w.weather_description || '-';
 
         weatherEl.innerHTML = `
             <div class="big-value">${temp}&deg;C</div>
             <div class="detail">${desc}</div>
-            <div class="detail">Wind: ${wind} ${windDir}</div>
+            <div class="detail">Wind: ${windDir} ${wind}</div>
             <div class="detail">Rain chance: ${precip}%</div>
         `;
     } else {
@@ -304,8 +310,8 @@ function assessConditions(weather, tides) {
     if (tides.flow_rate > 2) issues += 2;
     else if (tides.flow_rate > 1) issues += 1;
 
-    if (issues === 0) return { label: 'TRIP NOTE', color: 'success' };
-    if (issues <= 2) return { label: 'CAUTION', color: 'warning' };
+    if (issues === 0) return { label: 'NOTE', color: 'success' };
+    if (issues <= 2) return { label: 'NOTE', color: 'warning' };
     return { label: 'NO GO', color: 'danger' };
 }
 
@@ -319,7 +325,7 @@ async function fetchTideChart() {
             body: JSON.stringify({
                 station: 'Portsmouth',
                 start_time: startDateTime,
-                duration_hours: Math.max(state.journeyData?.journey?.duration_hours || 4, 12),
+                duration_hours: 24,
             }),
         });
         const data = await resp.json();
@@ -349,6 +355,16 @@ async function fetchTideChart() {
                 maintainAspectRatio: false,
                 plugins: { legend: { display: false } },
                 scales: {
+                    x: {
+                        ticks: {
+                            maxTicksLimit: 12,
+                            callback: function(val, index) {
+                                const label = this.getLabelForValue(val);
+                                const hour = parseInt(label);
+                                return hour % 3 === 0 ? label : '';
+                            }
+                        }
+                    },
                     y: {
                         beginAtZero: false,
                         title: { display: true, text: 'Height (m)' },
@@ -536,8 +552,8 @@ function renderMapSummary() {
     if (w) {
         weatherEl.innerHTML = `
             <h4>Weather</h4>
-            <div class="map-summary-row"><span>${w.weather_description || '-'}</span><span>${w.temperature != null ? w.temperature + '\u00B0C' : '-'}</span></div>
-            <div class="map-summary-row"><span>Wind</span><span>${w.wind_speed != null ? w.wind_speed + ' km/h ' + (w.wind_direction || '') : '-'}</span></div>
+            <div class="map-summary-row"><span>${w.weather_description || '-'}</span><span>${w.temperature != null ? Math.round(w.temperature) + '\u00B0C' : '-'}</span></div>
+            <div class="map-summary-row"><span>Wind</span><span>${w.wind_speed != null ? (w.wind_direction || '') + ' ' + Math.round(w.wind_speed) + ' km/h' : '-'}</span></div>
             <div class="map-summary-row"><span>Rain</span><span>${w.precipitation_probability != null ? w.precipitation_probability + '%' : '-'}</span></div>
         `;
     } else {
@@ -643,7 +659,7 @@ function tripData() {
     const startStr = formatDateTime(j.start_time).split(',').slice(1).join(',').trim();
     const endStr = formatDateTime(j.end_time).split(',').slice(1).join(',').trim();
     const wind = w ? `${w.wind_speed} km/h ${w.wind_direction || ''}`.trim() : '-';
-    const temp = w ? `${w.temperature}\u00B0C` : '-';
+    const temp = w ? `${Math.round(w.temperature)}\u00B0C` : '-';
     const precip = w && w.precipitation_probability != null ? `${w.precipitation_probability}%` : '-';
     const tideDir = t.tide_direction === 'rising' ? 'Rising' : 'Falling';
     const nextHwp = t.next_hwp ? `${t.next_hwp.time} (${t.next_hwp.height}m)` : '-';

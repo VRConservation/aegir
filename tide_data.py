@@ -153,7 +153,7 @@ def get_tide_events(target_date):
     for ev in events:
         label = "HWP" if ev["type"] == "HW" else "LWP"
         result.append({
-            "time": ev["time"].strftime("%H:%M"),
+            "time": ev["time"].strftime("%H%M"),
             "datetime": ev["time"].isoformat(),
             "height": ev["height"],
             "type": ev["type"],
@@ -212,8 +212,8 @@ def get_tide_info(start_time, end_time):
         "end_height": end_height,
         "tide_direction": tide_direction,
         "flow_rate": round(flow_rate, 2),
-        "next_hwp": {"time": next_hwp["time"].strftime("%H:%M"), "height": next_hwp["height"]} if next_hwp else None,
-        "next_lwp": {"time": next_lwp["time"].strftime("%H:%M"), "height": next_lwp["height"]} if next_lwp else None,
+        "next_hwp": {"time": next_hwp["time"].strftime("%H%M"), "height": next_hwp["height"]} if next_hwp else None,
+        "next_lwp": {"time": next_lwp["time"].strftime("%H%M"), "height": next_lwp["height"]} if next_lwp else None,
         "tide_range": round(tide_range, 2),
     }
 

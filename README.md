@@ -10,7 +10,7 @@ Kayak Journey Planner — tide predictions, weather forecasts and route planning
 - **Tide predictions**: Simplified harmonic model with spring/neap calculation
 - **Estimated duration**: Calculated from distance, paddling speed and tidal flow
 - **Interactive map**: Leaflet.js with click-to-add waypoints and route drawing
-- **TRIP NOTE / CAUTION / NO GO**: Traffic-light conditions assessment
+- **NOTE / NO GO**: Traffic-light conditions assessment
 - **Export**: Export to a forum ready post or pdf with map
 
 ## Quick Start
