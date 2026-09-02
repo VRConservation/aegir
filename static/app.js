@@ -791,3 +791,136 @@ function exportPDF() {
         }, 300);
     });
 }
+
+// --- Save / Gallery ---
+function getSavedJourneys() {
+    try {
+        return JSON.parse(localStorage.getItem('aegir-journeys')) || [];
+    } catch { return []; }
+}
+
+function saveJourneysToStorage(journeys) {
+    localStorage.setItem('aegir-journeys', JSON.stringify(journeys));
+}
+
+function generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+}
+
+function loadHtml2canvasLib() {
+    return new Promise((resolve, reject) => {
+        if (window.html2canvas) { resolve(window.html2canvas); return; }
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        s.onload = () => resolve(window.html2canvas);
+        s.onerror = reject;
+        document.head.appendChild(s);
+    });
+}
+
+function saveJourney() {
+    if (!state.journeyData) return;
+
+    loadHtml2canvasLib().then(h2c => {
+        mainMap.invalidateSize();
+        setTimeout(() => {
+            h2c(mainMap.getContainer(), {
+                useCORS: true,
+                scale: 1,
+                windowWidth: 600,
+                windowHeight: 400,
+            }).then(canvas => {
+                const thumbnail = canvas.toDataURL('image/jpeg', 0.7);
+                const journey = {
+                    id: generateId(),
+                    savedAt: new Date().toISOString(),
+                    date: state.date,
+                    time: state.time,
+                    springPercentage: state.springPercentage,
+                    start: { ...state.start },
+                    end: { ...state.end },
+                    waypoints: state.waypoints.map(wp => ({ lat: wp.lat, lon: wp.lon })),
+                    journeyData: state.journeyData,
+                    thumbnail,
+                };
+                const journeys = getSavedJourneys();
+                journeys.unshift(journey);
+                saveJourneysToStorage(journeys);
+                alert('Journey saved!');
+            });
+        }, 300);
+    });
+}
+
+function openGallery() {
+    const panel = document.getElementById('gallery-panel');
+    const grid = document.getElementById('gallery-grid');
+    const empty = document.getElementById('gallery-empty');
+    const journeys = getSavedJourneys();
+
+    if (journeys.length === 0) {
+        grid.classList.add('hidden');
+        empty.classList.remove('hidden');
+    } else {
+        empty.classList.add('hidden');
+        grid.classList.remove('hidden');
+        grid.innerHTML = journeys.map(j => {
+            const d = j.journeyData && j.journeyData.journey;
+            const distKm = d ? d.distance_km : '?';
+            const distNm = d ? d.distance_nm : '?';
+            const dateObj = new Date(j.date + 'T00:00:00');
+            const dateStr = dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+            return `
+                <div class="journey-card">
+                    ${j.thumbnail ? `<img class="journey-card-thumb" src="${j.thumbnail}" alt="Route map">` : '<div class="journey-card-thumb"></div>'}
+                    <div class="journey-card-body">
+                        <div class="journey-card-date">${dateStr} ${j.time}</div>
+                        <div class="journey-card-route">${j.start.name || 'Start'} &rarr; ${j.end.name || 'End'}</div>
+                        <div class="journey-card-dist">${distKm} km / ${distNm} nm</div>
+                        <div class="journey-card-actions">
+                            <button class="btn-load" onclick="loadJourney('${j.id}')">Load</button>
+                            <button class="btn-delete" onclick="deleteJourney('${j.id}')">Delete</button>
+                        </div>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    panel.classList.remove('hidden');
+}
+
+function closeGallery() {
+    document.getElementById('gallery-panel').classList.add('hidden');
+}
+
+function loadJourney(id) {
+    const journeys = getSavedJourneys();
+    const j = journeys.find(x => x.id === id);
+    if (!j) return;
+
+    state.date = j.date;
+    state.time = j.time;
+    state.springPercentage = j.springPercentage || null;
+    state.start = { ...j.start };
+    state.end = { ...j.end };
+    state.waypoints = [];
+    state.journeyData = j.journeyData;
+
+    document.getElementById('journey-date').value = j.date;
+    document.getElementById('journey-time').value = j.time;
+    document.getElementById('spring-percentage').value = j.springPercentage || '';
+    document.getElementById('start-search').value = j.start.name || '';
+    document.getElementById('end-search').value = j.end.name || '';
+    document.getElementById('start-coord').textContent = j.start.lat ? `${j.start.lat.toFixed(4)}, ${j.start.lon.toFixed(4)}` : '';
+    document.getElementById('end-coord').textContent = j.end.lat ? `${j.end.lat.toFixed(4)}, ${j.end.lon.toFixed(4)}` : '';
+
+    closeGallery();
+    goToStep(4);
+}
+
+function deleteJourney(id) {
+    if (!confirm('Delete this saved journey?')) return;
+    const journeys = getSavedJourneys().filter(x => x.id !== id);
+    saveJourneysToStorage(journeys);
+    openGallery();
+}
